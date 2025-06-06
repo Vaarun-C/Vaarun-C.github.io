@@ -9,7 +9,7 @@ export interface ProjectDetails {
   demo_url?: string
   screenshots?: string[]
   live_url?: string
-  category: 'web' | 'mobile' | 'backend' | 'ai' | 'game' | 'cli' | 'library'
+  category: 'web' | 'mobile' | 'backend' | 'ai' | 'game' | 'cli' | 'automation'
   architecture?: string
   performance_metrics?: {
     metric: string
@@ -262,7 +262,40 @@ export const projectDetailsMap: Record<string, ProjectDetails> = {
         
         category: "game",
         live_url: undefined,
-    }
+    },
+
+    "Ki": {
+      name: "Ki",
+      detailed_description: "Ki is an automated Discord bot controller that simulates user activity to maximize Pokémon capture efficiency in PokéTwo. It leverages Selenium-driven clients and intelligent task routing to automate spawns, captures, and marketplace listings.",
+      
+      tech_stack: [
+          "Python",
+          "Selenium",
+          "Heroku",
+          "Firebase (Firestore)",
+          "Docker",
+          "Kubernetes",
+          "Discord API"
+      ],
+      
+      features: [
+          "Automated spawning and capturing of Pokémon in PokéTwo",
+          "Simulated message traffic to trigger spawns",
+          "Real-time capture and sale logging to Firebase",
+          "Dynamic pricing and listing strategy based on marketplace thresholds",
+          "Containerized worker pods managed via Kubernetes",
+          "Resilient microservice architecture with modular task routing"
+      ],
+      
+      demo_type: "images", 
+      screenshots: [
+        "/screenshots/Ki1.png"
+      ],
+      
+      category: "automation",
+      live_url: undefined
+  }
+
 }
 
 // Helper function to get project details

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Code, ExternalLink, X, Play, Eye, Github, Calendar, Star, GitFork, Monitor, Database, Cpu, Globe, FileText } from 'lucide-react'
+import { Code, ExternalLink, X, Play, Eye, Github, Calendar, Star, GitFork, Monitor, Database, Cpu, Globe, FileText, Bot } from 'lucide-react'
 import { getProjectDetails } from '@/data/projects' // Add this import
 
 
@@ -38,7 +38,7 @@ const categoryIcons = {
   ai: Cpu,
   game: Play,
   cli: Monitor,
-  library: Code
+  automation: Bot,
 }
 
 const ProjectModal: React.FC<{
@@ -52,8 +52,35 @@ const ProjectModal: React.FC<{
 
   // 3. Also update your renderDemo function to handle the case where files don't exist yet:
 const renderDemo = () => {
-  // Check if we have demo configuration but missing files
-  if (project.demo_type && !project.demo_url) {
+  // Handle different demo types with proper validation
+  if (!project.demo_type) {
+    return (
+      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-8 text-center">
+        <Eye className="mx-auto mb-4 text-gray-400" size={48} />
+        <p className="text-gray-500 dark:text-gray-400">Demo not available</p>
+      </div>
+    )
+  }
+
+  // Check if demo is configured but files are missing
+  const hasMissingFiles = () => {
+    switch (project.demo_type) {
+      case 'video':
+        return !project.demo_url
+      case 'iframe':
+        return !project.demo_url
+      case 'api':
+        return false // API demos don't need files
+      case 'images':
+        return !project.screenshots || project.screenshots.length === 0
+      case 'interactive':
+        return false // Interactive demos don't need files
+      default:
+        return !project.demo_url
+    }
+  }
+
+  if (hasMissingFiles()) {
     return (
       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-8 text-center">
         <Play className="mx-auto mb-4 text-blue-400" size={48} />
@@ -65,15 +92,7 @@ const renderDemo = () => {
     )
   }
 
-  if (!project.demo_type || !project.demo_url) {
-    return (
-      <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-8 text-center">
-        <Eye className="mx-auto mb-4 text-gray-400" size={48} />
-        <p className="text-gray-500 dark:text-gray-400">Demo not available</p>
-      </div>
-    )
-  }
-
+  // Render the appropriate demo type
   switch (project.demo_type) {
     case 'iframe':
       return (
@@ -128,7 +147,11 @@ const renderDemo = () => {
               key={index}
               src={img}
               alt={`${project.name} screenshot ${index + 1}`}
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 hover:shadow-lg transition-shadow cursor-pointer"
+              onError={(e) => {
+                console.error(`Failed to load image: ${img}`)
+                e.currentTarget.style.display = 'none'
+              }}
             />
           ))}
         </div>
