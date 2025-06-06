@@ -22,7 +22,7 @@ interface EnhancedRepo {
   demo_url?: string
   screenshots?: string[]
   live_url?: string
-  category?: 'web' | 'mobile' | 'backend' | 'ai' | 'game' | 'cli' | 'library'
+  category?: 'web' | 'mobile' | 'backend' | 'ai' | 'game' | 'cli' | 'automation'
   // Add these publication fields:
   publication_url?: string
   publication_title?: string

@@ -311,5 +311,5 @@ export const projectCategories = [
   { id: 'ai', name: 'AI/ML', icon: 'Cpu' },
   { id: 'game', name: 'Games', icon: 'Play' },
   { id: 'cli', name: 'CLI Tools', icon: 'Monitor' },
-  { id: 'library', name: 'Libraries', icon: 'Code' }
+  { id: 'automation', name: 'Automations', icon: 'Bot' }
 ]
