@@ -18,11 +18,11 @@ interface EnhancedRepo {
   tech_stack?: string[]
   features?: string[]
   challenges?: string[]
-  demo_type?: 'iframe' | 'video' | 'api' | 'images' | 'interactive'
+  demo_type?: 'iframe' | 'video' | 'images' | 'interactive'
   demo_url?: string
   screenshots?: string[]
   live_url?: string
-  category?: 'web' | 'mobile' | 'backend' | 'ai' | 'game' | 'cli' | 'automation'
+  category?: 'web' | 'backend' | 'ai' | 'game' | 'cli' | 'automation'
   // Add these publication fields:
   publication_url?: string
   publication_title?: string
@@ -69,8 +69,6 @@ const renderDemo = () => {
         return !project.demo_url
       case 'iframe':
         return !project.demo_url
-      case 'api':
-        return false // API demos don't need files
       case 'images':
         return !project.screenshots || project.screenshots.length === 0
       case 'interactive':
@@ -116,26 +114,6 @@ const renderDemo = () => {
             <source src={project.demo_url} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
-        </div>
-      )
-    
-    case 'api':
-      return (
-        <div className="bg-gray-900 rounded-lg p-6 text-green-400 font-mono text-sm">
-          <div className="mb-4">
-            <span className="text-blue-400">GET</span> /api/weather?city=bangalore
-          </div>
-          <div className="text-gray-300">
-            {`{
-  "city": "Bangalore",
-  "temperature": 24,
-  "humidity": 65,
-  "description": "Partly cloudy"
-}`}
-          </div>
-          <button className="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-            Try API
-          </button>
         </div>
       )
     

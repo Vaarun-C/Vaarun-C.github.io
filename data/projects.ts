@@ -160,31 +160,6 @@ export const projectDetailsMap: Record<string, ProjectDetails> = {
 //     category: 'cli'
 //   },
 
-//   // Libraries
-//   'api-rate-limiter': {
-//     name: 'Advanced Rate Limiter',
-//     detailed_description: 'A flexible rate limiting library supporting multiple algorithms (sliding window, token bucket, fixed window). Includes Redis backend, customizable limits, and comprehensive metrics.',
-//     tech_stack: ['TypeScript', 'Redis', 'Jest', 'Node.js'],
-//     features: [
-//       'Multiple rate limiting algorithms',
-//       'Redis-based distributed limiting',
-//       'Customizable limit configurations',
-//       'Detailed metrics and monitoring',
-//       'TypeScript support',
-//       'Comprehensive test coverage'
-//     ],
-//     challenges: [
-//       'Implementing precise sliding window algorithm',
-//       'Ensuring atomic operations in Redis',
-//       'Performance optimization for high throughput',
-//       'Handling Redis connection failures'
-//     ],
-//     demo_type: 'api',
-//     category: 'library'
-//   }
-
-    // Add this to your data/projects.ts file
-
     "NEAT-cars": {
         name: "NEAT Cars - Neural Evolution",
         detailed_description: "An implementation of NeuroEvolution of Augmenting Topologies (NEAT) algorithm where AI cars learn to navigate user drawn racing tracks through genetic evolution. Cars start with random behaviors and evolve over several generations to master driving, developing optimal neural networks through natural selection.",
