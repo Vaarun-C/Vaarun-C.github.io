@@ -1,0 +1,9 @@
+{
+  "title": "Wave Function Collapse",
+  "tagline": "Watch a platformer level assemble itself.",
+  "description": "A Python implementation of the Wave Function Collapse algorithm that generates platforming levels from tiles and adjacency rules in rules.json. Each step picks the lowest-entropy cell, collapses it to one tile, and propagates constraints to its neighbours until the grid is fixed or a contradiction forces a restart. This demo animates that process, highlighting the chosen cell and shading open cells by entropy.",
+  "tech": ["Python", "OpenCV", "NumPy"],
+  "kind": "sim",
+  "repo": "https://github.com/Vaarun-C/WaveFunctionCollapse",
+  "controls": "click or space pause · R regenerate · S speed"
+}

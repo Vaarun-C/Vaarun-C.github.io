@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEAT Cars</title>
+<style>
+:root{
+  --bg:#0b0a0d; --panel:#131117; --line:#2a2632; --ink:#ebe8f2; --dim:#8c8597;
+  --mint:#7cf4d0; --pink:#ff5c8a; --btn:#1b1921; --btn-line:#3a3544;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden}
+body{font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+#app{position:fixed;inset:0;display:grid;grid-template-columns:minmax(0,1fr) 198px;grid-template-rows:minmax(0,1fr)}
+#app.narrow{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,46%)}
+#stage{position:relative;min-width:0;min-height:0;overflow:hidden}
+#world{position:absolute;inset:0;width:100%;height:100%;display:block}
+#world.painting{touch-action:none;cursor:crosshair}
+#banner{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:none;text-align:center;
+  background:rgba(11,10,13,.9);border:1px solid var(--mint);padding:10px 14px;max-width:86%;color:var(--ink)}
+#banner b{color:var(--mint);font-size:14px;display:block;margin-bottom:4px}
+#side{min-width:0;min-height:0;overflow:auto;background:var(--panel);border-left:1px solid var(--line);
+  padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+#app.narrow #side{border-left:0;border-top:1px solid var(--line);flex-direction:row;flex-wrap:wrap;align-content:flex-start;gap:8px 12px}
+#app.narrow .gen,#app.narrow .speeds,#app.narrow .row,#app.narrow .hint,#app.narrow #tools{flex-basis:100%}
+#app.narrow figure{flex:1 1 150px;min-width:0;max-width:100%}
+#side canvas{max-width:100%}
+#side>*{min-width:0}
+#app.narrow .kv{flex:1 1 130px}
+#app.narrow .netc{height:120px}
+@media (max-height:440px){ .hint{display:none} }
+.gen{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.gen b{font-size:18px;color:var(--mint);font-weight:700;letter-spacing:.02em}
+.gen span{color:var(--dim);font-variant-numeric:tabular-nums}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0}
+.kv dt{color:var(--dim)}
+.kv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+figure{margin:0;min-width:0}
+.netc{width:100%;height:100px;display:block}
+.sparkc{width:100%;height:34px;display:block}
+figcaption{color:var(--dim);font-size:10px;margin-top:3px;line-height:1.3}
+.speeds,.row{display:flex;gap:5px}
+.speeds button,.row button{flex:1}
+button{font:inherit;color:var(--ink);background:var(--btn);border:1px solid var(--btn-line);border-radius:4px;
+  padding:6px 4px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+button:hover{border-color:#5a5468}
+button[aria-pressed="true"]{border-color:var(--mint);color:var(--mint)}
+button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+#tools{display:none;gap:5px;flex-wrap:wrap}
+#tools.on{display:flex}
+#tools button{flex:1 1 40%}
+.hint{color:var(--dim);font-size:10px;margin:0;line-height:1.4}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="world" aria-label="Track with cars driving"></canvas>
+    <div id="banner" role="status"></div>
+  </div>
+  <aside id="side">
+    <div class="gen"><span>GEN</span><b id="gen">1</b><span id="alive">100/100 alive</span></div>
+    <dl class="kv">
+      <dt>best now</dt><dd id="bestNow">0.0</dd>
+      <dt>best ever</dt><dd id="bestAll">0.0</dd>
+      <dt>species</dt><dd id="species">0</dd>
+      <dt>goal</dt><dd>200 fitness</dd>
+    </dl>
+    <figure>
+      <canvas id="net" class="netc" aria-label="Live drawing of the leading car's network"></canvas>
+      <figcaption id="netCap">leader network 5-6-3</figcaption>
+    </figure>
+    <figure>
+      <canvas id="spark" class="sparkc" aria-label="Best fitness per generation"></canvas>
+      <figcaption>best fitness per generation</figcaption>
+    </figure>
+    <div class="speeds" role="group" aria-label="Simulation speed">
+      <button data-speed="1" aria-pressed="true">1x</button>
+      <button data-speed="5" aria-pressed="false">5x</button>
+      <button data-speed="max" aria-pressed="false">max</button>
+    </div>
+    <div class="row">
+      <button id="reset">reset</button>
+      <button id="paint" aria-pressed="false">paint</button>
+    </div>
+    <div id="tools" class="row">
+      <button id="brushRoad" aria-pressed="true">road</button>
+      <button id="brushErase" aria-pressed="false">erase</button>
+      <button id="clear">clear</button>
+      <button id="original">original</button>
+    </div>
+    <p class="hint" id="hint">Cars sense walls with 5 rays and steer with a tiny net. Drag on the track to paint your own.</p>
+  </aside>
+</div>
+
+<script src="assets.js"></script>
+
+<!-- ===== CORE: DOM-free port of NEAT.py, NeuralNetwork.py and main.py ===== -->
+<script id="core">
+const NEAT = (() => {
+  // Track_new.png is 1536x864: the size of the screen the original trains on.
+  const W = 1536, H = 864;
+  const CAR_W = 83, CAR_H = 30;                 // car.png scaled to 83x30 in main.py
+  const START = { x: 30, y: 300 };              // main.py starts at (90, H/2); that pixel is white in Track_new.png
+  const PI = Math.PI;
+  const LAYERS = [5, 6, 3];                     // NeuralNetwork: NN([5, 6, 3])
+  const N_W = 5 * 6 + 6 * 3, N_B = 6 + 3;       // 48 weights, 9 biases
+  const RAYS = 5, SPREAD = PI;                  // Sensor: numRays = 5, spread = PI
+  const UP = 0, RIGHT = 1, LEFT = 2, DOWN = 3;
+  const CONTROLS = [LEFT, UP, RIGHT];           // Computer.controls: network output index -> action
+  const ACCEL = 0.1, MAX_SPEED = 100, TURN = 0.05, START_SPEED = 5;
+  const DT = 1 / 60;                            // fitness integrates speed over time; one tick = one 60 fps frame
+  const MAX_FIT = 200;                          // main.py stops when a car reaches this fitness
+  const POP = 100, NO_PARENTS = 2;              // pop_size = 100, no_parents = 2
+  // NEAT.py reads these with int(input(...)). Integers only, so rate 1 means "always mutate".
+  // The range is a judgement call: the repo never fixed it. See MUT_LO/MUT_HI below.
+  const MUT_RATE = 1, MUT_LO = 0, MUT_HI = 0.5;
+  const SPECIES_T = 0.45;                       // display-only clustering threshold (mean |gene diff|)
+  const BRUSH = 35;                             // paint ellipse radius (70 px wide ellipses in the original)
+
+  const uniform = (a, b) => a + (b - a) * Math.random();
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  function randomGenome() {
+    const w = new Float64Array(N_W), b = new Float64Array(N_B);
+    for (let i = 0; i < N_W; i++) w[i] = uniform(-1, 1);
+    for (let i = 0; i < N_B; i++) b[i] = uniform(-1, 1);
+    return { w, b };
+  }
+
+  // NN.feedForward: z-score the inputs, then tanh layers. Returns [normalised inputs, hidden, outputs].
+  function forward(g, inputs) {
+    const n = inputs.length;
+    let mean = 0;
+    for (const x of inputs) mean += x;
+    mean /= n;
+    let v = 0;
+    for (const x of inputs) v += (x - mean) * (x - mean);
+    const sd = Math.sqrt(v / n);
+    const z = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      // stdev == 0 branch copied from NeuralNetwork.py (maps 0..1440 onto -3..3)
+      z[i] = sd === 0 ? (6 * inputs[i] / 1440) - 3 : (inputs[i] - mean) / sd;
+    }
+    const acts = [z];
+    let a = z, wOff = 0, bOff = 0;
+    for (let L = 0; L < LAYERS.length - 1; L++) {
+      const inN = LAYERS[L], outN = LAYERS[L + 1];
+      const o = new Float64Array(outN);
+      for (let i = 0; i < outN; i++) {
+        let s = 0;
+        for (let j = 0; j < inN; j++) s += a[j] * g.w[wOff + j * outN + i];   // same flat layout as Layer.setWeights
+        o[i] = Math.tanh(s + g.b[bOff + i]);
+      }
+      acts.push(o);
+      a = o;
+      wOff += inN * outN;
+      bOff += outN;
+    }
+    return acts;
+  }
+
+  // Sensor.update: march each ray one pixel at a time until it leaves the road (non-black pixel).
+  function castRays(car, road) {
+    const rays = [], dist = [];
+    for (let i = 0; i < RAYS; i++) {
+      const ang = lerp(SPREAD / 2, -SPREAD / 2, i / ((RAYS === 1) ? 0.5 : (RAYS - 1))) + car.angle + PI;
+      const cs = Math.cos(ang), sn = Math.sin(ang);
+      let inc = 1, ex, ey;
+      for (;;) {
+        ex = car.x - cs * inc;
+        ey = car.y - sn * inc;
+        if (ex < 0 || ey < 0 || ex >= W || ey >= H) {
+          // The original clamps to the edge and can spin forever on a black edge pixel; here the edge is a wall.
+          ex = Math.min(Math.max(ex, 0), W - 1);
+          ey = Math.min(Math.max(ey, 0), H - 1);
+          break;
+        }
+        if (!road[Math.trunc(ey) * W + Math.trunc(ex)]) break;
+        inc++;
+      }
+      rays.push([car.x, car.y, ex, ey]);
+      dist.push(Math.hypot(ex - car.x, ey - car.y));
+    }
+    car.rays = rays;
+    car.dist = dist;
+  }
+
+  function resetCar(car, g) {
+    car.g = g;
+    car.x = START.x;
+    car.y = START.y;
+    car.angle = PI / 2;
+    car.speed = START_SPEED;
+    car.alive = true;
+    car.fitness = 0;
+    car.dist = [0, 0, 0, 0, 0];
+    car.rays = [];
+    car.acts = null;
+    car.action = -1;
+  }
+
+  // Car.update (after the controls have been chosen)
+  function move(car, dir) {
+    if (dir === UP) {
+      car.speed += ACCEL;
+      if (car.speed > MAX_SPEED) car.speed = MAX_SPEED;
+    }
+    if (dir === RIGHT) car.angle += TURN;
+    else if (dir === LEFT) car.angle -= TURN;
+    if (car.angle > PI) car.angle -= 2 * PI;
+    if (car.angle < -PI) car.angle += 2 * PI;
+    car.x += car.speed * Math.cos(car.angle);
+    car.y += car.speed * Math.sin(car.angle);
+    // wrap-around
+    if (car.x < -CAR_W) car.x = W; else if (car.x > W) car.x = -CAR_W;
+    if (car.y < -CAR_H) car.y = H; else if (car.y > H) car.y = -CAR_H;
+  }
+
+  // Track.checkCollision: the front-centre point of the car touching white (off-road) kills it.
+  function collides(car, road) {
+    const px = Math.trunc(car.x + Math.cos(car.angle) * CAR_W / 2);
+    const py = Math.trunc(car.y + Math.sin(car.angle) * CAR_W / 2);
+    if (px < 0 || py < 0 || px >= W || py >= H) return false;
+    return road[py * W + px] === 0;
+  }
+
+  // Computer.update
+  function updateCar(car, road) {
+    castRays(car, road);
+    car.fitness += car.speed * DT;                 // calc_fitness
+    const acts = forward(car.g, car.dist);
+    car.acts = acts;
+    const out = acts[acts.length - 1];
+    let k = 0;
+    for (let i = 1; i < out.length; i++) if (out[i] > out[k]) k = i;   // outputs.index(max(outputs))
+    car.action = CONTROLS[k];
+    move(car, CONTROLS[k]);
+  }
+
+  // NEAT.crossover (the repo's crossover_helper is unfinished, so this is uniform crossover: each gene from a random parent)
+  function crossoverGenes(parentArrays) {
+    const n = parentArrays[0].length, out = new Float64Array(n);
+    for (let k = 0; k < n; k++) out[k] = parentArrays[Math.floor(Math.random() * parentArrays.length)][k];
+    return out;
+  }
+
+  // NEAT.mutation: with probability rate, every gene moves by +/- uniform(lo, hi)
+  function mutateGenes(arr, rate, lo, hi) {
+    if (!(Math.random() < rate)) return;
+    for (let k = 0; k < arr.length; k++) {
+      const s = Math.random() < 0.5 ? 1 : -1;
+      arr[k] += s * uniform(lo, hi);
+    }
+  }
+
+  function genomeDistance(a, b) {
+    let s = 0;
+    for (let i = 0; i < N_W; i++) s += Math.abs(a.w[i] - b.w[i]);
+    for (let i = 0; i < N_B; i++) s += Math.abs(a.b[i] - b.b[i]);
+    return s / (N_W + N_B);
+  }
+
+  // Display-only speciation: greedy clustering by genome distance. It does not affect reproduction.
+  function speciesCount(genomes) {
+    const reps = [];
+    for (const g of genomes) {
+      if (!reps.some((r) => genomeDistance(g, r) < SPECIES_T)) reps.push(g);
+    }
+    return reps.length;
+  }
+
+  // NEAT.newPopulation: the two fittest cars are parents, and the whole population is replaced.
+  function nextGeneration(st) {
+    const pool = st.cars.slice();
+    const parents = [];
+    for (let k = 0; k < NO_PARENTS; k++) {
+      let bi = 0;
+      for (let i = 1; i < pool.length; i++) if (pool[i].fitness > pool[bi].fitness) bi = i;
+      parents.push(pool[bi]);
+      pool.splice(bi, 1);
+    }
+    const pw = parents.map((p) => p.g.w), pb = parents.map((p) => p.g.b);
+    const kids = [];
+    for (let i = 0; i < st.cars.length; i++) {
+      const w = crossoverGenes(pw), b = crossoverGenes(pb);
+      mutateGenes(w, MUT_RATE, MUT_LO, MUT_HI);
+      mutateGenes(b, MUT_RATE, MUT_LO, MUT_HI);
+      kids.push({ w, b });
+    }
+    st.history.push(parents[0].fitness);
+    st.cars.forEach((car, i) => resetCar(car, kids[i]));
+    st.generation++;
+    st.species = speciesCount(kids);
+  }
+
+  // One frame of main.py's loop. Returns false once the run is solved.
+  function tick(st) {
+    if (st.solved) return false;
+    for (const car of st.cars) if (car.alive && collides(car, st.road)) car.alive = false;
+    if (!st.cars.some((c) => c.alive)) { nextGeneration(st); return true; }
+    for (const c of st.cars) {
+      if (c.alive && c.fitness >= MAX_FIT) {
+        st.solved = { id: c.id, fitness: c.fitness, generation: st.generation };
+        return false;
+      }
+    }
+    for (const c of st.cars) if (c.alive) updateCar(c, st.road);
+    st.ticks++;
+    for (const c of st.cars) if (c.fitness > st.bestAll) st.bestAll = c.fitness;
+    return true;
+  }
+
+  function newState(road) {
+    const cars = [];
+    for (let i = 0; i < POP; i++) {
+      const car = { id: i + 1 };
+      resetCar(car, randomGenome());
+      cars.push(car);
+    }
+    return {
+      cars, road, generation: 1, history: [], ticks: 0, bestAll: 0, solved: null,
+      species: speciesCount(cars.map((c) => c.g)),
+    };
+  }
+
+  // Exact black is road, as in the original's `get_at(...) != black` and `== white` tests.
+  function roadFromRGBA(data) {
+    const road = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) {
+      const o = i * 4;
+      road[i] = (data[o] === 0 && data[o + 1] === 0 && data[o + 2] === 0) ? 1 : 0;
+    }
+    return road;
+  }
+
+  function stampRoad(road, cx, cy, r, v) {
+    const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(W - 1, Math.ceil(cx + r));
+    const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(H - 1, Math.ceil(cy + r));
+    const r2 = r * r;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+        if (dx * dx + dy * dy <= r2) road[y * W + x] = v;
+      }
+    }
+  }
+
+  function blankRoad() {
+    const road = new Uint8Array(W * H);
+    stampRoad(road, START.x, START.y, BRUSH, 1);   // the start must sit on a path
+    return road;
+  }
+
+  function leaderOf(st) {
+    let best = null;
+    for (const c of st.cars) if (c.alive && (!best || c.fitness > best.fitness)) best = c;
+    return best;
+  }
+
+  return {
+    W, H, CAR_W, CAR_H, START, MAX_FIT, POP, BRUSH, LAYERS,
+    newState, tick, forward, leaderOf, roadFromRGBA, stampRoad, blankRoad, speciesCount,
+    _internals: { randomGenome, nextGeneration, castRays, resetCar, collides, UP, RIGHT, LEFT, DOWN, CONTROLS, SPECIES_T, MUT_LO, MUT_HI },
+  };
+})();
+</script>
+
+<!-- ===== UI: rendering, panel, controls ===== -->
+<script id="ui">
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const { W, H, CAR_W, CAR_H, START, MAX_FIT, BRUSH } = NEAT;
+  const world = $("world"), wctx = world.getContext("2d");
+  const netCv = $("net"), nctx = netCv.getContext("2d");
+  const sparkCv = $("spark"), sctx = sparkCv.getContext("2d");
+  const app = $("app"), banner = $("banner");
+
+  const trackCv = document.createElement("canvas");
+  trackCv.width = W; trackCv.height = H;
+  const tctx = trackCv.getContext("2d");
+  const trackImage = tctx.createImageData(W, H);
+  let dirty = true;
+
+  const carImg = new Image();
+  carImg.src = NEAT_ASSETS.car;
+
+  const COL_ROAD = [43, 38, 51], COL_OFF = [16, 14, 19];
+  const MINT = "124,244,208", PINK = "255,92,138";
+
+  let origRoad = null, road = null, st = null;
+  let speed = 1, paintMode = false, brush = 1, drawing = false, lastP = null;
+  let L = { s: 1, ox: 0, oy: 0 };
+  let narrow = false, lastLeader = null, acc = 0, lastTime = performance.now();
+  let lastText = {};
+
+  function paintTrackImage() {
+    const d = trackImage.data;
+    for (let i = 0; i < W * H; i++) {
+      const c = road[i] ? COL_ROAD : COL_OFF, o = i * 4;
+      d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+    }
+    tctx.putImageData(trackImage, 0, 0);
+    dirty = false;
+  }
+
+  function restart() {
+    st = NEAT.newState(road);
+    lastLeader = null;
+    banner.style.display = "none";
+    acc = 0;
+  }
+
+  // ----- layout -----
+  function sizeCanvases() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    for (const cv of [world, netCv, sparkCv]) {
+      const r = cv.getBoundingClientRect();
+      cv.width = Math.max(2, Math.round(r.width * dpr));
+      cv.height = Math.max(2, Math.round(r.height * dpr));
+    }
+    narrow = window.innerWidth < 520 || window.innerWidth / window.innerHeight < 1.15;
+    app.classList.toggle("narrow", narrow);
+  }
+  function fitWorld() {
+    const cw = world.width, ch = world.height;
+    const s = Math.min(cw / W, ch / H);
+    L = { s, ox: (cw - W * s) / 2, oy: (ch - H * s) / 2 };
+  }
+
+  // ----- drawing -----
+  function drawWorld(leader) {
+    const cw = world.width, ch = world.height;
+    wctx.setTransform(1, 0, 0, 1, 0, 0);
+    wctx.fillStyle = "rgb(" + COL_OFF.join(",") + ")";
+    wctx.fillRect(0, 0, cw, ch);
+    wctx.setTransform(L.s, 0, 0, L.s, L.ox, L.oy);
+    if (dirty) paintTrackImage();
+    wctx.imageSmoothingEnabled = true;
+    wctx.drawImage(trackCv, 0, 0, W, H);
+    wctx.lineWidth = 1 / L.s;
+    wctx.strokeStyle = "rgba(255,255,255,0.12)";
+    wctx.strokeRect(0, 0, W, H);
+
+    // start marker
+    wctx.beginPath();
+    wctx.arc(START.x, START.y, 9, 0, Math.PI * 2);
+    wctx.strokeStyle = "rgba(" + MINT + ",0.7)";
+    wctx.stroke();
+
+    // sensor rays (every living car faint, the leader bright)
+    wctx.beginPath();
+    for (const c of st.cars) {
+      if (!c.alive || c === leader) continue;
+      for (const r of c.rays) { wctx.moveTo(r[0], r[1]); wctx.lineTo(r[2], r[3]); }
+    }
+    wctx.strokeStyle = "rgba(" + MINT + ",0.13)";
+    wctx.stroke();
+    if (leader && leader.rays.length) {
+      wctx.beginPath();
+      for (const r of leader.rays) { wctx.moveTo(r[0], r[1]); wctx.lineTo(r[2], r[3]); }
+      wctx.strokeStyle = "rgba(" + MINT + ",0.9)";
+      wctx.stroke();
+    }
+
+    // cars
+    for (const c of st.cars) {
+      if (!c.alive) continue;
+      wctx.save();
+      wctx.translate(c.x, c.y);
+      wctx.rotate(c.angle);
+      if (carImg.complete && carImg.naturalWidth) {
+        wctx.drawImage(carImg, -CAR_W / 2, -CAR_H / 2, CAR_W, CAR_H);
+      } else {
+        wctx.fillStyle = "#ffc857";
+        wctx.fillRect(-CAR_W / 2, -CAR_H / 2, CAR_W, CAR_H);
+      }
+      wctx.restore();
+    }
+    if (leader && leader.alive) {
+      wctx.beginPath();
+      wctx.arc(leader.x, leader.y, CAR_W * 0.6, 0, Math.PI * 2);
+      wctx.strokeStyle = "rgba(" + MINT + ",0.9)";
+      wctx.lineWidth = 1.5 / L.s;
+      wctx.stroke();
+      wctx.lineWidth = 1 / L.s;
+    }
+
+    // screen-space labels
+    wctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (leader) {
+      const sx = leader.x * L.s + L.ox, sy = leader.y * L.s + L.oy;
+      const dpr = cw / world.getBoundingClientRect().width || 1;
+      wctx.font = Math.round(11 * dpr) + "px ui-monospace, Menlo, monospace";
+      wctx.fillStyle = "rgb(" + MINT + ")";
+      wctx.fillText("#" + leader.id, sx + 10 * dpr, sy - 8 * dpr);
+    }
+  }
+
+  function drawNet(car) {
+    const cw = netCv.width, ch = netCv.height;
+    nctx.setTransform(1, 0, 0, 1, 0, 0);
+    nctx.clearRect(0, 0, cw, ch);
+    if (!car) return;
+    const dpr = cw / netCv.getBoundingClientRect().width || 1;
+    const cols = [0.17, 0.5, 0.83].map((f) => f * cw);
+    const top = ch * 0.12, bot = ch * 0.88;
+    const ys = (n) => Array.from({ length: n }, (_, i) => n === 1 ? ch / 2 : top + (bot - top) * i / (n - 1));
+    const yIn = ys(5), yHid = ys(6), yOut = ys(3);
+    const g = car.g, acts = car.acts;
+    const pos = [yIn.map((y) => [cols[0], y]), yHid.map((y) => [cols[1], y]), yOut.map((y) => [cols[2], y])];
+
+    // connections, coloured by sign and weighted by magnitude
+    const edge = (a, b, w) => {
+      const m = Math.min(1, Math.abs(w) / 1.2);
+      nctx.beginPath();
+      nctx.moveTo(a[0], a[1]);
+      nctx.lineTo(b[0], b[1]);
+      nctx.strokeStyle = (w >= 0 ? "rgba(" + MINT + "," : "rgba(" + PINK + ",") + (0.1 + 0.8 * m).toFixed(3) + ")";
+      nctx.lineWidth = (0.4 + 1.3 * m) * dpr;
+      nctx.stroke();
+    };
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 6; j++) edge(pos[0][i], pos[1][j], g.w[i * 6 + j]);
+    for (let j = 0; j < 6; j++) for (let k = 0; k < 3; k++) edge(pos[1][j], pos[2][k], g.w[30 + j * 3 + k]);
+
+    // nodes, filled by activation
+    const R = 4.2 * dpr;
+    const node = (p, v, label, lp) => {
+      const a = Math.min(1, Math.abs(v));
+      nctx.beginPath();
+      nctx.arc(p[0], p[1], R, 0, Math.PI * 2);
+      nctx.fillStyle = "#1c1a22";
+      nctx.fill();
+      if (a > 0.01) {
+        nctx.fillStyle = (v >= 0 ? "rgba(" + MINT + "," : "rgba(" + PINK + ",") + a.toFixed(3) + ")";
+        nctx.fill();
+      }
+      nctx.strokeStyle = "#4a4456";
+      nctx.lineWidth = 1 * dpr;
+      nctx.stroke();
+      if (label) {
+        nctx.font = Math.round(9 * dpr) + "px ui-monospace, Menlo, monospace";
+        nctx.fillStyle = "#8c8597";
+        nctx.textBaseline = "middle";
+        nctx.textAlign = lp === "left" ? "right" : "left";
+        nctx.fillText(label, p[0] + (lp === "left" ? -(R + 3 * dpr) : (R + 3 * dpr)), p[1]);
+      }
+    };
+    const inLabels = ["R", "FR", "F", "FL", "L"];   // sensor i=0 is on the car's right, see castRays
+    const outLabels = ["L", "GAS", "R"];
+    for (let i = 0; i < 5; i++) node(pos[0][i], acts ? acts[0][i] / 2 : 0, inLabels[i], "left");
+    for (let j = 0; j < 6; j++) node(pos[1][j], acts ? acts[1][j] : 0, null);
+    const out = acts ? acts[2] : [0, 0, 0];
+    for (let k = 0; k < 3; k++) {
+      node(pos[2][k], out[k], outLabels[k], "right");
+      if (acts && k === argmax(out)) {
+        nctx.beginPath();
+        nctx.arc(pos[2][k][0], pos[2][k][1], R + 2.6 * dpr, 0, Math.PI * 2);
+        nctx.strokeStyle = "rgba(" + MINT + ",0.95)";
+        nctx.lineWidth = 1.2 * dpr;
+        nctx.stroke();
+      }
+    }
+  }
+
+  function argmax(a) {
+    let k = 0;
+    for (let i = 1; i < a.length; i++) if (a[i] > a[k]) k = i;
+    return k;
+  }
+
+  function drawSpark(hist, current) {
+    const cw = sparkCv.width, ch = sparkCv.height;
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    sctx.clearRect(0, 0, cw, ch);
+    const data = hist.concat([current]);
+    const dpr = cw / sparkCv.getBoundingClientRect().width || 1;
+    const top = 4 * dpr, bot = ch - 4 * dpr;
+    const ymax = Math.max(MAX_FIT, ...data) * 1.04;
+    const y = (v) => bot - (v / ymax) * (bot - top);
+    // goal line
+    sctx.setLineDash([3 * dpr, 3 * dpr]);
+    sctx.beginPath();
+    sctx.moveTo(0, y(MAX_FIT)); sctx.lineTo(cw, y(MAX_FIT));
+    sctx.strokeStyle = "rgba(255,92,138,0.5)";
+    sctx.lineWidth = 1 * dpr;
+    sctx.stroke();
+    sctx.setLineDash([]);
+    if (data.length < 2) return;
+    const x = (i) => (i / (data.length - 1)) * (cw - 2 * dpr) + dpr;
+    sctx.beginPath();
+    data.forEach((v, i) => (i ? sctx.lineTo(x(i), y(v)) : sctx.moveTo(x(i), y(v))));
+    sctx.strokeStyle = "rgb(" + MINT + ")";
+    sctx.lineWidth = 1.5 * dpr;
+    sctx.stroke();
+    const lx = x(data.length - 1), ly = y(current);
+    sctx.beginPath();
+    sctx.arc(lx, ly, 2.4 * dpr, 0, Math.PI * 2);
+    sctx.fillStyle = "rgb(" + MINT + ")";
+    sctx.fill();
+  }
+
+  function setText(id, v) {
+    if (lastText[id] === v) return;
+    lastText[id] = v;
+    $(id).textContent = v;
+  }
+
+  function updatePanel() {
+    const bestNow = st.cars.reduce((m, c) => Math.max(m, c.fitness), 0);
+    const aliveN = st.cars.filter((c) => c.alive).length;
+    setText("gen", String(st.generation));
+    setText("alive", aliveN + "/" + st.cars.length + " alive");
+    setText("bestNow", bestNow.toFixed(1));
+    setText("bestAll", st.bestAll.toFixed(1));
+    setText("species", String(st.species));
+    const cap = lastLeader
+      ? "leader #" + lastLeader.id + " · fitness " + lastLeader.fitness.toFixed(1) + " · outputs L / GAS / R"
+      : "leader network 5-6-3";
+    setText("netCap", cap);
+    return bestNow;
+  }
+
+  function frame(now) {
+    const dtS = Math.min(0.1, (now - lastTime) / 1000);
+    lastTime = now;
+    const running = !paintMode && !st.solved;
+    if (running) {
+      if (speed === "max") {
+        const t0 = performance.now();
+        let n = 0;
+        do {
+          if (!NEAT.tick(st)) break;
+          n++;
+        } while (performance.now() - t0 < 12 && n < 20000);
+      } else {
+        acc += dtS * 60 * speed;                  // 60 ticks per second at 1x, like clock.tick(60)
+        let n = Math.floor(acc);
+        acc -= n;
+        if (n > 600) { n = 600; acc = 0; }
+        for (let i = 0; i < n; i++) if (!NEAT.tick(st)) break;
+      }
+    }
+    if (st.solved && banner.style.display !== "block") {
+      banner.innerHTML = "<b>Solved</b>Car #" + st.solved.id + " reached " + MAX_FIT +
+        " fitness in generation " + st.solved.generation + ".<br>Press reset to train again.";
+      banner.style.display = "block";
+    }
+    const newLeader = NEAT.leaderOf(st);
+    if (newLeader) lastLeader = newLeader;
+    const bestNow = updatePanel();
+    drawWorld(lastLeader);
+    drawNet(lastLeader);
+    drawSpark(st.history, bestNow);
+    requestAnimationFrame(frame);
+  }
+
+  // ----- painting -----
+  function toWorld(e) {
+    const r = world.getBoundingClientRect();
+    const dpr = world.width / r.width;
+    return { x: ((e.clientX - r.left) * dpr - L.ox) / L.s, y: ((e.clientY - r.top) * dpr - L.oy) / L.s };
+  }
+  function paintBetween(a, b) {
+    const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (BRUSH * 0.25)));
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      NEAT.stampRoad(road, a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, BRUSH, brush);
+    }
+    dirty = true;
+  }
+  world.addEventListener("pointerdown", (e) => {
+    if (!paintMode) return;
+    drawing = true;
+    world.setPointerCapture(e.pointerId);
+    lastP = toWorld(e);
+    paintBetween(lastP, lastP);
+    e.preventDefault();
+  });
+  world.addEventListener("pointermove", (e) => {
+    if (!drawing) return;
+    const p = toWorld(e);
+    paintBetween(lastP, p);
+    lastP = p;
+  });
+  const endDraw = () => { drawing = false; };
+  world.addEventListener("pointerup", endDraw);
+  world.addEventListener("pointercancel", endDraw);
+
+  function setPaint(on) {
+    paintMode = on;
+    world.classList.toggle("painting", on);
+    $("tools").classList.toggle("on", on);
+    const pb = $("paint");
+    pb.setAttribute("aria-pressed", String(on));
+    pb.textContent = on ? "done" : "paint";
+    $("hint").textContent = on
+      ? "Drag on the track. Road is what cars can drive on; cars die on white."
+      : "Cars sense walls with 5 rays and steer with a tiny net. Drag on the track to paint your own.";
+    if (!on) restart();                           // evolve again on the edited track
+  }
+  $("paint").addEventListener("click", () => setPaint(!paintMode));
+  const setBrush = (v) => {
+    brush = v;
+    $("brushRoad").setAttribute("aria-pressed", String(v === 1));
+    $("brushErase").setAttribute("aria-pressed", String(v === 0));
+  };
+  $("brushRoad").addEventListener("click", () => setBrush(1));
+  $("brushErase").addEventListener("click", () => setBrush(0));
+  $("clear").addEventListener("click", () => { road.set(NEAT.blankRoad()); dirty = true; });
+  $("original").addEventListener("click", () => { road.set(origRoad); dirty = true; });
+
+  // ----- controls -----
+  for (const b of document.querySelectorAll("[data-speed]")) {
+    b.addEventListener("click", () => {
+      const v = b.dataset.speed;
+      speed = v === "max" ? "max" : Number(v);
+      for (const o of document.querySelectorAll("[data-speed]")) o.setAttribute("aria-pressed", String(o === b));
+    });
+  }
+  $("reset").addEventListener("click", () => restart());
+
+  // ----- boot -----
+  sizeCanvases();
+  fitWorld();
+  window.addEventListener("resize", () => { sizeCanvases(); fitWorld(); });
+  if ("ResizeObserver" in window) new ResizeObserver(() => { sizeCanvases(); fitWorld(); }).observe($("stage"));
+
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const cx = c.getContext("2d");
+    cx.drawImage(img, 0, 0);
+    origRoad = NEAT.roadFromRGBA(cx.getImageData(0, 0, W, H).data);
+    road = origRoad.slice();
+    restart();
+    requestAnimationFrame((t) => { lastTime = t; frame(t); });
+  };
+  img.onerror = () => {
+    origRoad = NEAT.blankRoad();
+    road = origRoad.slice();
+    restart();
+    requestAnimationFrame((t) => { lastTime = t; frame(t); });
+  };
+  img.src = NEAT_ASSETS.track;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Varun C — AI Engineer</title>
+<meta name="description" content="Varun C, AI engineer. Agents, retrieval and LLM systems, plus ML built from scratch. Every project runs live in its own window.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="crt" aria-hidden="true"></div>
+
+<header class="hero">
+  <p class="boot" id="boot" aria-hidden="true"></p>
+  <h1>VARUN C<span class="blink">_</span></h1>
+  <p class="role">AI ENGINEER</p>
+  <p class="lede">I build LLM agents, retrieval systems and ML models, and ship them to production. Every project below runs live in its own window. Press <kbd>BOOT</kbd> on any of them to try it.</p>
+  <nav class="links hire">
+    <a class="cta" href="mailto:varun.c.blr@gmail.com">✉ email me</a>
+    <a class="cta" href="Resume.pdf" target="_blank" rel="noopener">▤ résumé</a>
+    <a href="https://www.linkedin.com/in/varun-c-75096a1b8/" target="_blank" rel="noopener">linkedin</a>
+    <a href="https://github.com/Vaarun-C" target="_blank" rel="noopener">github</a>
+    <a href="#ai">projects ↓</a>
+  </nav>
+
+  <section class="focus" aria-label="What I work on">
+    <div class="fcard">
+      <h3>Agents &amp; LLM systems</h3>
+      <p>Tool-using agents, self-improving agents with LoRA fine-tuning, intent routing, MCP servers.</p>
+    </div>
+    <div class="fcard">
+      <h3>Retrieval &amp; data</h3>
+      <p>Knowledge graphs, hybrid vector + BM25 search, NL2SQL with validation, visual search.</p>
+    </div>
+    <div class="fcard">
+      <h3>ML from scratch</h3>
+      <p>Neuroevolution, signal processing and source separation, surrogate models, Bayesian optimisation.</p>
+    </div>
+  </section>
+  <ul class="stack" aria-label="Tools">
+    <li>Python</li><li>PyTorch</li><li>scikit-learn</li><li>vLLM</li><li>LoRA</li><li>Modal</li><li>Neo4j</li><li>Vector DBs</li>
+    <li>FastAPI</li><li>AWS Lambda / SQS</li><li>Docker</li><li>JavaScript</li>
+  </ul>
+</header>
+
+<nav class="secnav" aria-label="Sections" id="secnav"></nav>
+<main id="list"></main>
+
+<section class="xp" id="experience" aria-label="Experience">
+  <header class="sechead"><p class="secnum">04</p><h2>Experience &amp; Writing</h2><p class="blurb">Where I've worked and what I've published.</p></header>
+  <ol class="timeline">
+    <li><p class="when">Jul 2024 – present</p><h3>Teaching Assistant, Big Data <span>· PES University</span></h3><p>Designed and graded Spark assignments for 200+ students. Reviewed distributed-systems projects: Kafka task queues, multi-client file transfer and real-time log management.</p><ul class="tech"><li>Spark</li><li>Kafka</li><li>Hadoop</li></ul></li>
+    <li><p class="when">Jun – Jul 2024</p><h3>Software Engineering Intern <span>· AVEVA</span></h3><p>Built real-time drill-down charts, and an async API that cut data retrieval from 40 s to 2 s (95% faster).</p><ul class="tech"><li>.NET Core</li><li>SQL</li><li>Angular</li><li>RxJS</li></ul></li>
+    <li><p class="when">Jun – Aug 2023</p><h3>Full Stack Developer Intern <span>· Snow Mountain AI</span></h3><p>Led the database migration from a team-based to an organisation- and project-based schema, and rebuilt the company website frontend.</p><ul class="tech"><li>PostgreSQL</li><li>Supabase</li><li>Next.js</li></ul></li>
+    <li><p class="when">Jun – Jul 2023</p><h3>Computer Vision Intern <span>· STARC-PESU</span></h3><p>Computer vision for cricket ball tracking and wide-ball detection with 90% accuracy, visualised in Unity3D at 60 fps. <a href="#wide-ball-detection">See the live demo ↑</a></p><ul class="tech"><li>OpenCV</li><li>MediaPipe</li><li>TensorFlow</li><li>Unity3D</li></ul></li>
+  </ol>
+  <div class="paper">
+    <p class="when">PAPER · 2025</p>
+    <h3>From Diagrams to Code: An Exploration into Automated Cloud Template Creation</h3>
+    <p>International Conference on Electronics Information and Emergency Communication</p>
+  </div>
+</section>
+
+<footer>
+  <p class="footcta">Hiring for AI or ML? <a href="mailto:varun.c.blr@gmail.com">varun.c.blr@gmail.com</a> · <a href="https://www.linkedin.com/in/varun-c-75096a1b8/" target="_blank" rel="noopener">LinkedIn</a> · <a href="Resume.pdf" target="_blank" rel="noopener">Résumé</a></p>
+  <p>Varun C · <a href="https://github.com/Vaarun-C" target="_blank" rel="noopener">github.com/Vaarun-C</a> · <span id="count"></span></p>
+  <p class="fine">Work projects run on made-up demo data. No real customer data appears on this site.</p>
+</footer>
+
+<template id="tpl">
+  <article class="project">
+    <div class="win">
+      <div class="bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="wtitle"></span>
+        <span class="wbtns">
+          <button class="wb reload" title="Restart" aria-label="Restart">↻</button>
+          <button class="wb full" title="Fullscreen" aria-label="Fullscreen">⛶</button>
+          <a class="wb pop" title="Open in new tab" aria-label="Open in new tab" target="_blank" rel="noopener">↗</a>
+        </span>
+      </div>
+      <div class="screen">
+        <button class="power">
+          <span class="pw-icon">▶</span>
+          <span class="pw-label">BOOT</span>
+          <span class="pw-hint"></span>
+        </button>
+      </div>
+    </div>
+    <div class="info">
+      <p class="kind"></p>
+      <h2></h2>
+      <p class="tag"></p>
+      <p class="desc"></p>
+      <ul class="hl"></ul>
+      <p class="controls"></p>
+      <ul class="tech"></ul>
+      <a class="repo" target="_blank" rel="noopener">view source →</a>
+    </div>
+  </article>
+</template>
+
+<script src="projects.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

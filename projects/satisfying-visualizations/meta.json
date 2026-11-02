@@ -1,0 +1,10 @@
+{
+  "title": "Satisfying Loops",
+  "tagline": "Bouncing boxes and polyrhythm sliders, on loop",
+  "description": "Two small generative loops ported from a pygame repo. BoXeS bounces a shifting-colour square around a frame and leaves a trail, with a bounce thump on each hit. Polyrhythm sets fifteen sliders on arcs to run at slightly different speeds, so they drift apart and line up again over a five-minute cycle, playing a note each time one crosses the bottom line.",
+  "tech": ["JavaScript", "Canvas 2D", "Web Audio"],
+  "section": "creative",
+  "kind": "sim",
+  "repo": "https://github.com/Vaarun-C/satisfying-visualizations",
+  "controls": "←/→ or swipe switches · ↑/↓ volume · drag the volume bar on polyrhythm"
+}

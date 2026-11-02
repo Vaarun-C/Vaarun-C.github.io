@@ -1,0 +1,15 @@
+{
+  "title": "Chess",
+  "tagline": "Hot-seat chess with legal-move highlights.",
+  "description": "A browser port of a C terminal chess project, with the same piece movement, colour scheme and move highlighting. Check, checkmate and stalemate detection are complete here, and two players share one screen and take turns. The original had no AI opponent, so this version is two-player only.",
+  "tech": [
+    "JavaScript",
+    "CSS grid",
+    "Pointer events",
+    "C (original)"
+  ],
+  "section": "creative",
+  "kind": "game",
+  "repo": "https://github.com/Vaarun-C/Second-Semester-Project-Chess",
+  "controls": "Tap or click a piece, then a highlighted square · UNDO · FLIP board"
+}

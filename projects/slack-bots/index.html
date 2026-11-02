@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Brain Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d12;
+    --panel:#12151d;
+    --panel2:#171b26;
+    --line:#2a3142;
+    --text:#d6dbe6;
+    --dim:#7d869a;
+    --a:#4fd1ff;
+    --b:#ffb347;
+    --dict:#9dff7a;
+    --sys:#c792ea;
+    --mono:'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    --pixel:'Press Start 2P', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:var(--mono);overflow:hidden;}
+  body{display:flex;flex-direction:column;font-size:12px;line-height:1.5;}
+  button,input{font-family:inherit;}
+
+  header{
+    display:flex;align-items:center;gap:8px;padding:6px 10px;min-width:0;
+    border-bottom:2px solid var(--line);background:var(--panel);flex:0 0 auto;
+  }
+  header h1{font-family:var(--pixel);font-size:9px;margin:0;letter-spacing:1px;white-space:nowrap;color:#fff;font-weight:400;}
+  .tag{font-family:var(--pixel);font-size:6px;padding:4px 6px;border:2px solid var(--b);color:var(--b);white-space:nowrap;}
+  .info{margin-left:auto;color:var(--dim);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;text-align:right;}
+
+  #chat{
+    flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px;
+    display:flex;flex-direction:column;gap:10px;scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+  }
+  .msg.user{
+    align-self:flex-end;max-width:88%;padding:6px 9px;background:#10222b;
+    border:2px solid var(--a);color:#e6f7ff;word-wrap:break-word;
+  }
+  .msg.bot{
+    align-self:stretch;padding:8px 10px;background:var(--panel);border:2px solid var(--line);
+    border-left:4px solid var(--dict);box-shadow:3px 3px 0 #000;min-width:0;word-wrap:break-word;
+  }
+  .msg.bot p{margin:0 0 7px;}
+  .msg.bot p:last-child{margin-bottom:0;}
+
+  .step{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:10.5px;color:var(--dim);margin:0 0 5px;}
+  .step .tool{font-family:var(--pixel);font-size:6px;background:var(--a);color:#000;padding:3px 4px;}
+  .step .args{color:#8f99ad;word-break:break-all;}
+  .step .sp{color:var(--b);width:10px;}
+  .step .out{color:#b4bdcf;}
+
+  .cite{
+    display:inline-block;font-family:var(--pixel);font-size:6px;line-height:1;color:#000;background:var(--dict);
+    border:0;padding:3px 4px;margin:0 2px;cursor:pointer;vertical-align:middle;touch-action:manipulation;
+  }
+  .cite:hover,.cite:focus-visible{outline:2px solid #fff;outline-offset:1px;}
+  .cite[aria-pressed="true"]{background:#fff;}
+
+  .refbox{display:none;margin-top:8px;padding:6px 8px;background:#0d1017;border:1px dashed var(--dict);font-size:10.5px;}
+  .refbox.on{display:block;}
+  .refbox .rid{color:var(--dict);font-weight:700;word-break:break-all;}
+  .refbox .loc{color:var(--b);word-break:break-all;}
+  .refbox .d{color:#aab3c5;margin-top:2px;}
+
+  .tw{overflow-x:auto;margin:4px 0 8px;}
+  table.rt{border-collapse:collapse;width:100%;font-size:10.5px;}
+  table.rt th,table.rt td{border-bottom:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top;white-space:nowrap;}
+  table.rt th{color:var(--dim);font-weight:400;}
+  table.rt td{color:#c9d1e0;}
+
+  blockquote.q{
+    margin:4px 0 8px;padding:5px 8px;border-left:3px solid var(--sys);background:#120f1a;
+    color:#d5c8f0;font-style:italic;
+  }
+  .cli{
+    margin:6px 0 0;padding:5px 7px;background:#0d1017;border:1px dashed var(--line);
+    color:var(--dict);font-size:10.5px;white-space:pre-wrap;word-break:break-all;
+  }
+
+  .chips{
+    display:flex;flex-wrap:wrap;gap:6px;padding:7px 10px;border-top:2px solid var(--line);
+    background:var(--panel2);flex:0 0 auto;max-height:104px;overflow-y:auto;
+  }
+  .chip{
+    font-size:11px;color:var(--text);background:#0d1017;border:1px solid var(--line);
+    padding:5px 8px;cursor:pointer;text-align:left;touch-action:manipulation;
+  }
+  .chip::before{content:"\203A  ";color:var(--dict);}
+  .chip:hover,.chip:focus-visible{border-color:var(--a);color:#fff;outline:none;}
+  .chip:active{transform:translate(1px,1px);}
+
+  form.inp{display:flex;gap:6px;padding:7px 10px 9px;border-top:2px solid var(--line);background:var(--panel);flex:0 0 auto;}
+  form.inp input{
+    flex:1 1 auto;min-width:0;font-size:12px;color:var(--text);background:#0d1017;
+    border:2px solid var(--line);padding:6px 8px;
+  }
+  form.inp input::placeholder{color:#5b6376;}
+  form.inp input:focus{outline:none;border-color:var(--a);}
+  .send{
+    font-family:var(--pixel);font-size:7px;color:#000;background:var(--dict);border:0;
+    padding:0 10px;min-width:44px;box-shadow:2px 2px 0 #000;cursor:pointer;touch-action:manipulation;
+  }
+  .send:active{transform:translate(2px,2px);box-shadow:none;}
+
+  @media (max-width:520px){
+    .info{display:none;}
+    .msg.user{max-width:94%;}
+  }
+  @media (max-width:360px){
+    header h1{font-size:8px;}
+    .tag{display:none;}
+    body{font-size:11px;}
+  }
+  @media (max-height:340px){
+    #chat{padding:6px;gap:6px;}
+    .chips{max-height:58px;padding:5px 8px;}
+  }
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>PROJECT BRAIN</h1>
+  <span class="tag" title="Every answer here is written in advance from the demo's sample project.">SCRIPTED DEMO</span>
+  <span class="info">brain · harbor-api · 412 nodes · 1,087 edges</span>
+</header>
+
+<main id="chat" aria-live="polite"></main>
+
+<div class="chips" id="chips" role="group" aria-label="Suggested prompts"></div>
+
+<form class="inp" id="form" autocomplete="off">
+  <input id="inp" type="text" maxlength="200" placeholder="Ask about harbor-api, or tap a prompt" aria-label="Message">
+  <button class="send" type="submit">SEND</button>
+</form>
+
+<script>
+(function () {
+  'use strict';
+
+  // ------------------------------------------------------------------
+  // Scripted answers for a fictional sample project ("harbor-api").
+  // Tool names, node ids and CLI commands follow the real brain (brain/tools.py,
+  // brain/mcp_server.py, cli.py). Every file, name and number here is made up.
+  //   steps:  brain tool calls shown while "thinking"
+  //   refs:   sources, cited as [n] in the text (1-based)
+  //   blocks: p (text with [n]) | table | quote | cli
+  // ------------------------------------------------------------------
+  var PROMPTS = [
+    {
+      label: 'Where is a new order saved?',
+      match: /order/i,
+      steps: [
+        { tool: 'brain_get_endpoint', args: 'path="/orders", method="POST"', out: '1 endpoint · 2 services · 1 model · 2 tables' },
+        { tool: 'brain_get_service', args: 'name="OrderService"', out: 'place_order · 1 caller · 3 callees' }
+      ],
+      refs: [
+        { id: 'endpoint:POST:/orders', type: 'Endpoint', loc: 'harbor-api/routes/orders.py:18', d: 'Creates an order from a checkout payload.' },
+        { id: 'method:OrderService.place_order', type: 'Method', loc: 'harbor-api/services/orders.py:42', d: 'Validates the cart, reserves stock and writes the order in one transaction.' },
+        { id: 'method:ReservationService.reserve', type: 'Method', loc: 'harbor-api/services/inventory.py:27', d: 'Holds stock per SKU and warehouse until payment clears.' },
+        { id: 'table:orders', type: 'Table', loc: 'harbor-api/migrations/0004_orders.sql:3', d: 'One row per order. Line items live in order_lines.' }
+      ],
+      blocks: [
+        { p: 'POST /orders is handled in routes/orders.py [1]. It calls OrderService.place_order [2].' },
+        { p: 'place_order reserves stock through ReservationService.reserve [3], then writes one row to orders [4] and one row per item to order_lines.' },
+        { p: 'The request and response shapes come from the Order and OrderLine models.' },
+        { cli: 'python cli.py endpoint ./harbor-api /orders' }
+      ]
+    },
+    {
+      label: 'What breaks if I change stock_levels?',
+      match: /stock|touch|break/i,
+      steps: [
+        { tool: 'brain_find_related', args: 'identifier="stock_levels"', out: '4 code nodes · 9 edges' },
+        { tool: 'brain_get_db_schema', args: 'table="stock_levels"', out: '4 columns · composite key' }
+      ],
+      refs: [
+        { id: 'method:ReservationService.reserve', type: 'Method', loc: 'harbor-api/services/inventory.py:27', d: 'Writes reserved on checkout.' },
+        { id: 'method:ReplenishmentJob.run', type: 'Method', loc: 'harbor-api/jobs/replenish.py:12', d: 'Nightly. Reads on_hand to plan purchase orders.' },
+        { id: 'method:InventoryReport.build', type: 'Method', loc: 'harbor-api/reports/inventory.py:33', d: 'Reads both counts for the weekly stock report.' },
+        { id: 'method:StockAdjustment.apply', type: 'Method', loc: 'harbor-api/services/adjustments.py:19', d: 'Manual corrections from the admin tools. Writes on_hand.' },
+        { id: 'table:stock_levels', type: 'Table', loc: 'harbor-api/migrations/0002_stock.sql:3', d: 'Keyed by sku and warehouse_id.' }
+      ],
+      blocks: [
+        { p: 'Four code paths read or write stock_levels [1][2][3][4]. Checkout writes reserved, the nightly replenishment job reads on_hand, the weekly report reads both, and manual adjustments write on_hand. The table is defined in [5].' },
+        { table: { head: ['column', 'type', 'key'], rows: [['sku', 'TEXT', 'PK'], ['warehouse_id', 'TEXT', 'PK'], ['on_hand', 'INTEGER', ''], ['reserved', 'INTEGER', '']] } },
+        { p: 'Renaming a column breaks all four paths. Changing the type of on_hand is the riskiest move, because the replenishment job does arithmetic on it.' },
+        { cli: 'python cli.py related ./harbor-api stock_levels' }
+      ]
+    },
+    {
+      label: 'Show the schema for customers',
+      match: /schema|customer/i,
+      steps: [
+        { tool: 'brain_get_db_schema', args: 'table="customers"', out: '5 columns · 1 unique index' }
+      ],
+      refs: [
+        { id: 'table:customers', type: 'Table', loc: 'harbor-api/migrations/0007_customers.sql:3', d: 'Created in migration 7. Email is unique.' }
+      ],
+      blocks: [
+        { p: 'customers is created in migration 7 [1] and has five columns:' },
+        { table: { head: ['column', 'type', 'note'], rows: [['id', 'INTEGER', 'primary key'], ['email', 'TEXT', 'unique'], ['name', 'TEXT', ''], ['marketing_opt_in', 'BOOLEAN', 'default false'], ['created_at', 'TIMESTAMP', '']] } },
+        { p: 'orders.customer_id and refunds.customer_id point at it, so a customer with orders cannot be deleted.' },
+        { cli: 'python cli.py schema ./harbor-api customers' }
+      ]
+    },
+    {
+      label: 'Find code that retries failed payment webhooks',
+      match: /retr|webhook|payment|search|find/i,
+      steps: [
+        { tool: 'brain_search', args: 'query="retry failed payment webhooks", n=5', out: '5 hits · best distance 0.21' },
+        { tool: 'brain_find_related', args: 'identifier="RetryQueue.schedule"', out: '2 callers' }
+      ],
+      refs: [
+        { id: 'method:RetryQueue.schedule', type: 'Method', loc: 'harbor-api/services/webhook_retry.py:22', d: 'Queues a failed delivery with exponential backoff.' },
+        { id: 'endpoint:POST:/webhooks/payments', type: 'Endpoint', loc: 'harbor-api/routes/webhooks.py:9', d: 'Verifies the signature, then hands the event to processing.' },
+        { id: 'method:PaymentWebhook.process', type: 'Method', loc: 'harbor-api/services/payments.py:88', d: 'Raises on unknown event types, which sends the event to the retry path.' }
+      ],
+      blocks: [
+        { table: { head: ['#', 'match', 'where', 'dist'], rows: [
+          ['1', 'RetryQueue.schedule', 'services/webhook_retry.py:22', '0.21'],
+          ['2', 'POST /webhooks/payments', 'routes/webhooks.py:9', '0.29'],
+          ['3', 'PaymentWebhook.process', 'services/payments.py:88', '0.33'],
+          ['4', 'RetryQueue.run', 'services/webhook_retry.py:51', '0.38'],
+          ['5', 'test_webhook_retry', 'tests/test_webhook_retry.py:14', '0.41']
+        ] } },
+        { p: 'Failed payment webhooks are queued in RetryQueue.schedule [1]. The payment webhook route reaches it when processing raises [2], and PaymentWebhook.process raises on unknown event types [3].' },
+        { p: 'Backoff is capped at six attempts. After that the event is parked for manual review.' },
+        { cli: 'python cli.py search ./harbor-api "retry failed payment webhooks" -n 5' }
+      ]
+    },
+    {
+      label: 'Remember that refunds go through RefundService',
+      match: /remember|refund|note/i,
+      steps: [
+        { tool: 'brain_enrich', args: 'identifier="service:RefundService", content="..."', out: 'note saved on service:RefundService' }
+      ],
+      refs: [
+        { id: 'service:RefundService', type: 'Service', loc: 'harbor-api/services/refunds.py:14', d: 'Note added: refunds go through RefundService.issue, not PaymentService.' }
+      ],
+      blocks: [
+        { p: 'Saved. The note is attached to RefundService [1] and comes back with it in later answers.' },
+        { quote: 'Refunds go through RefundService.issue, not PaymentService. PaymentService only charges.' },
+        { p: 'Notes live in the brain, not in the repo, so no code changes.' },
+        { cli: 'python cli.py enrich ./harbor-api service:RefundService "Refunds go through RefundService.issue, not PaymentService."' }
+      ]
+    }
+  ];
+  var FALLBACK = 'This demo only has scripted answers. Pick one of the prompts above. Each one shows the brain tools it runs and the sources it cites.';
+  var WELCOME = 'Hi. I answer questions about harbor-api from its brain, a graph and vector index built from the code. Pick a prompt to see which tools run and which sources get cited. Tap a [n] badge to open the source.';
+
+  var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var CHAR_MS = reduce ? 0 : 9;
+  var FRAME_MS = reduce ? 0 : 130;
+  var STEP_FRAMES = reduce ? 1 : 5;
+  var PAUSE_MS = reduce ? 0 : 240;
+
+  var chat = document.getElementById('chat');
+  var chipBox = document.getElementById('chips');
+  var form = document.getElementById('form');
+  var inp = document.getElementById('inp');
+  var runId = 0;
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function scrollEnd() { chat.scrollTop = chat.scrollHeight; }
+
+  // Insert before the source card so the card always stays at the bottom of a bot message.
+  function put(box, node) {
+    if (box._refbox) box.insertBefore(node, box._refbox); else box.appendChild(node);
+    scrollEnd();
+  }
+
+  function addUser(text) {
+    chat.appendChild(el('div', 'msg user', text));
+    scrollEnd();
+  }
+
+  function botShell() {
+    var box = el('div', 'msg bot');
+    var card = el('div', 'refbox');
+    box.appendChild(card);
+    box._refbox = card;
+    chat.appendChild(box);
+    scrollEnd();
+    return box;
+  }
+
+  function showRef(box, refs, n) {
+    var r = refs[n - 1];
+    var card = box._refbox;
+    if (!r || !card) return;
+    card.textContent = '';
+    card.appendChild(el('div', 'rid', '[' + n + '] ' + r.id));
+    card.appendChild(el('div', 'loc', r.type + ' · ' + r.loc));
+    card.appendChild(el('div', 'd', r.d));
+    card.classList.add('on');
+    box.querySelectorAll('.cite').forEach(function (c) {
+      c.setAttribute('aria-pressed', c.getAttribute('data-n') === String(n) ? 'true' : 'false');
+    });
+  }
+
+  function cite(box, refs, n) {
+    var b = el('button', 'cite', String(n));
+    b.type = 'button';
+    b.setAttribute('data-n', String(n));
+    b.setAttribute('aria-label', 'Source ' + n);
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', function () { showRef(box, refs, n); });
+    return b;
+  }
+
+  // Types a paragraph; [n] tokens become source badges.
+  async function typeParagraph(box, text, refs, my) {
+    var p = el('p');
+    put(box, p);
+    var parts = text.split(/(\[\d+\])/);
+    for (var i = 0; i < parts.length; i++) {
+      if (my !== runId) return false;
+      var m = /^\[(\d+)\]$/.exec(parts[i]);
+      if (m) {
+        p.appendChild(cite(box, refs, Number(m[1])));
+        continue;
+      }
+      var s = parts[i];
+      for (var j = 0; j < s.length; j += 2) {
+        if (my !== runId) return false;
+        p.appendChild(document.createTextNode(s.slice(j, j + 2)));
+        scrollEnd();
+        if (CHAR_MS) await wait(CHAR_MS);
+      }
+    }
+    return my === runId;
+  }
+
+  function tableNode(t) {
+    var wrap = el('div', 'tw');
+    var tb = el('table', 'rt');
+    var head = el('tr');
+    t.head.forEach(function (h) { head.appendChild(el('th', null, h)); });
+    tb.appendChild(head);
+    t.rows.forEach(function (row) {
+      var tr = el('tr');
+      row.forEach(function (c) { tr.appendChild(el('td', null, c)); });
+      tb.appendChild(tr);
+    });
+    wrap.appendChild(tb);
+    return wrap;
+  }
+
+  // One brain tool call: spinner, then its result line.
+  async function runStep(box, st, my) {
+    var row = el('div', 'step');
+    row.appendChild(el('span', 'tool', st.tool));
+    row.appendChild(el('span', 'args', '(' + st.args + ')'));
+    var sp = el('span', 'sp', '|');
+    var out = el('span', 'out', '');
+    row.appendChild(sp);
+    row.appendChild(out);
+    put(box, row);
+    var frames = ['|', '/', '-', '\\'];
+    for (var f = 0; f < STEP_FRAMES; f++) {
+      if (my !== runId) return false;
+      sp.textContent = frames[f % 4];
+      if (FRAME_MS) await wait(FRAME_MS);
+    }
+    if (my !== runId) return false;
+    sp.textContent = '✓';
+    out.textContent = st.out;
+    return true;
+  }
+
+  async function runPrompt(text, P) {
+    var my = ++runId;
+    addUser(text);
+    var box = botShell();
+    await wait(PAUSE_MS);
+    for (var i = 0; i < P.steps.length; i++) {
+      if (!(await runStep(box, P.steps[i], my))) return;
+    }
+    await wait(PAUSE_MS);
+    for (var k = 0; k < P.blocks.length; k++) {
+      var b = P.blocks[k];
+      if (b.p) {
+        if (!(await typeParagraph(box, b.p, P.refs, my))) return;
+      } else if (b.table) {
+        put(box, tableNode(b.table));
+      } else if (b.quote) {
+        put(box, el('blockquote', 'q', b.quote));
+      } else if (b.cli) {
+        put(box, el('div', 'cli', '$ ' + b.cli));
+      }
+      await wait(PAUSE_MS / 2);
+      if (my !== runId) return;
+    }
+  }
+
+  async function runFallback(text) {
+    var my = ++runId;
+    addUser(text);
+    var box = botShell();
+    await wait(PAUSE_MS);
+    await typeParagraph(box, FALLBACK, [], my);
+  }
+
+  function pick(text) {
+    for (var i = 0; i < PROMPTS.length; i++) {
+      if (PROMPTS[i].match.test(text)) return PROMPTS[i];
+    }
+    return null;
+  }
+
+  function go(text, P) {
+    if (P) runPrompt(text, P); else runFallback(text);
+  }
+
+  // Welcome message (static, no tools run).
+  var hello = botShell();
+  var hp = el('p', null, WELCOME);
+  put(hello, hp);
+
+  PROMPTS.forEach(function (P) {
+    var c = el('button', 'chip', P.label);
+    c.type = 'button';
+    c.addEventListener('click', function () { go(P.label, P); });
+    chipBox.appendChild(c);
+  });
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var t = inp.value.trim();
+    if (!t) return;
+    inp.value = '';
+    go(t, pick(t));
+  });
+})();
+</script>
+</body>
+</html>

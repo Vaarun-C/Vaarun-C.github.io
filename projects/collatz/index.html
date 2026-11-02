@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Collatz Spiral</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0a0d;
+    --panel: #17141d;
+    --line: #2b2634;
+    --ink: #ece6d6;
+    --dim: #8d869a;
+    --amber: #ffc53d;
+    --green: #5cf2b0;
+    --canvas: #050408;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--ink); overflow: hidden; }
+  body { display: flex; flex-direction: column; font: 18px/1.2 "VT323", ui-monospace, Menlo, monospace; }
+  #stage { flex: 1 1 auto; min-height: 0; position: relative; background: var(--canvas); }
+  #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: pointer; }
+  #bar {
+    flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+    padding: 6px 10px; background: var(--panel); border-top: 2px solid #000;
+  }
+  #bar label { display: flex; align-items: center; gap: 6px; color: var(--dim); white-space: nowrap; }
+  #bar output { color: var(--amber); min-width: 3ch; }
+  #bar input[type=range] { width: 110px; accent-color: var(--green); }
+  button {
+    font: 18px "VT323", ui-monospace, monospace; color: var(--ink); background: #221d2b;
+    border: 2px solid var(--line); padding: 2px 10px; cursor: pointer; touch-action: manipulation;
+  }
+  button:hover { border-color: var(--amber); color: var(--amber); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  @media (max-width: 480px) { #bar input[type=range] { width: 84px; } }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c" aria-label="Collatz spiral animation"></canvas></div>
+<div id="bar">
+  <label>range 2&ndash;<output id="rangeOut">120</output>
+    <input id="range" type="range" min="10" max="500" step="1" value="120"></label>
+  <label>speed <output id="speedOut">1</output>x
+    <input id="speed" type="range" min="1" max="30" step="1" value="1"></label>
+  <button id="pause" type="button">pause</button>
+  <button id="clear" type="button">restart</button>
+</div>
+
+<script>
+(() => {
+  // Port of collatz_conjecture.py (pyglet). Logical canvas is 1200x800 with y pointing up,
+  // like the pyglet window. Each frame plays `speed` steps of the original on_update().
+  const W = 1200, H = 800;
+  const START_X = Math.trunc(W / 5), START_Y = Math.trunc(H / 5);   // 240, 160
+  const LEFT_TURN = 20 * Math.PI / 180, RIGHT_TURN = 8 * Math.PI / 180;
+  const SCALE = 20, LINE_WIDTH = 3;
+  const C_START = [255, 216, 167], C_END = [171, 84, 231];
+  const HOLD_MS = 2000;
+
+  // Shared buffer: every segment ever drawn stays on it, like the pyglet batch that never clears.
+  const buf = document.createElement("canvas");
+  buf.width = W; buf.height = H;
+  const bctx = buf.getContext("2d");
+  bctx.setTransform(1, 0, 0, -1, 0, H);   // y-up
+  bctx.lineWidth = LINE_WIDTH;
+  bctx.lineCap = "butt";
+
+  const cv = document.getElementById("c");
+  const ctx = cv.getContext("2d");
+  const stage = document.getElementById("stage");
+
+  const $ = (id) => document.getElementById(id);
+  const rangeEl = $("range"), speedEl = $("speed"), pauseBtn = $("pause");
+
+  // get_hailstone_number / get_series
+  const hail = (n) => (n % 2 === 0 ? n / 2 : (3 * n + 1) / 2);
+  function* series(n) {
+    while (n !== 1) {           // All positive numbers end up in 4 -> 2 -> 1
+      n = hail(n);
+      yield n;
+    }
+  }
+
+  // calculate_color: interpolates with progress/1000, which keeps going past 1 on long paths.
+  // The original hands those values to pyglet unclamped; here they are clamped to 0..255.
+  function colour(p) {
+    const c = C_START.map((s, i) => {
+      const v = Math.trunc(s + (C_END[i] - s) * p);
+      return Math.min(255, Math.max(0, v));
+    });
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+
+  const state = {
+    maxN: 120, speed: 1, paused: false,
+    counter: 2, num: 2, gen: series(2), angle: 0,
+    x: START_X, y: START_Y, progress: 1,
+    wrapAt: 0,
+  };
+
+  function resetSeries() {
+    state.counter += 1;
+    if (state.counter > state.maxN) {
+      // Ran past the chosen range: hold the finished picture, then clear and start over at 2.
+      state.counter = 2;
+      state.wrapAt = performance.now() + HOLD_MS;
+    }
+    state.num = state.counter;
+    state.gen = series(state.num);
+    state.angle = 0;
+    state.x = START_X;
+    state.y = START_Y;
+    state.progress = 1;
+  }
+
+  // One on_update() call.
+  function step() {
+    const s = state;
+    if (s.num % 2 === 0) s.angle += LEFT_TURN;
+    else s.angle -= RIGHT_TURN;
+
+    const ex = s.x + SCALE * Math.cos(s.angle);
+    const ey = s.y + SCALE * Math.sin(s.angle);
+    bctx.strokeStyle = colour(s.progress / 1000);
+    bctx.beginPath();
+    bctx.moveTo(s.x, s.y);
+    bctx.lineTo(ex, ey);
+    bctx.stroke();
+    s.x = ex; s.y = ey;
+    s.progress += 10;
+
+    const next = s.gen.next();
+    if (!next.done) s.num = next.value;
+    else resetSeries();
+  }
+
+  function clearBuffer() {
+    bctx.save();
+    bctx.setTransform(1, 0, 0, 1, 0, 0);
+    bctx.clearRect(0, 0, W, H);
+    bctx.restore();
+  }
+
+  let cssW = 0, cssH = 0, dpr = 1;
+  function fit() {
+    dpr = window.devicePixelRatio || 1;
+    cssW = stage.clientWidth; cssH = stage.clientHeight;
+    cv.width = Math.max(1, Math.round(cssW * dpr));
+    cv.height = Math.max(1, Math.round(cssH * dpr));
+  }
+
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = "#050408";
+    ctx.fillRect(0, 0, cssW, cssH);
+    const s = Math.min(cssW / W, cssH / H) * 0.94;
+    const ox = (cssW - W * s) / 2, oy = (cssH - H * s) / 2;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(buf, ox, oy, W * s, H * s);
+
+    const size = Math.max(12, Math.min(20, cssH / 22));
+    ctx.font = `${size}px "VT323", ui-monospace, Menlo, monospace`;
+    ctx.fillStyle = "#ffc53d";
+    ctx.textBaseline = "top";
+    const tag = state.paused ? "  paused" : "";
+    ctx.fillText(`n = ${state.counter} of ${state.maxN}${tag}`, 8, 6);
+  }
+
+  function frame(t) {
+    if (!state.paused) {
+      if (state.wrapAt) {
+        if (t >= state.wrapAt) { clearBuffer(); state.wrapAt = 0; }
+      } else {
+        for (let i = 0; i < state.speed; i++) {
+          if (state.wrapAt) break;   // resetSeries() may start a hold mid-batch
+          step();
+        }
+      }
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  function setPaused(p) {
+    state.paused = p;
+    pauseBtn.textContent = p ? "play" : "pause";
+  }
+
+  rangeEl.addEventListener("input", () => {
+    state.maxN = Number(rangeEl.value);
+    $("rangeOut").textContent = state.maxN;
+  });
+  speedEl.addEventListener("input", () => {
+    state.speed = Number(speedEl.value);
+    $("speedOut").textContent = state.speed;
+  });
+  pauseBtn.addEventListener("click", () => setPaused(!state.paused));
+  $("clear").addEventListener("click", () => {
+    clearBuffer();
+    Object.assign(state, { counter: 1, wrapAt: 0 });
+    resetSeries();
+  });
+  cv.addEventListener("pointerdown", () => setPaused(!state.paused));
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") { e.preventDefault(); setPaused(!state.paused); }
+  });
+  new ResizeObserver(fit).observe(stage);
+
+  $("rangeOut").textContent = state.maxN;
+  $("speedOut").textContent = state.speed;
+  fit();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

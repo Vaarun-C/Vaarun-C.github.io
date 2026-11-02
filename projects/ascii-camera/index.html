@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ASCII Camera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<style>
+  :root {
+    --bg: #0b0a0d; --panel: #16131b; --edge: #2b2634;
+    --ink: #ece6d6; --dim: #8d869a; --amber: #ffc53d; --green: #5cf2b0; --red: #ff5c6c;
+    color-scheme: dark;
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; }
+  body { display: flex; flex-direction: column; font: 18px/1.2 "VT323", ui-monospace, Menlo, monospace; }
+  .title {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    padding: 5px 8px; background: #1d1a24; border-bottom: 2px solid var(--edge);
+    font: 8px "Press Start 2P", ui-monospace, monospace; color: var(--dim);
+  }
+  .title b { color: var(--green); font-weight: normal; }
+  .term {
+    flex: 1 1 auto; min-height: 0; position: relative; background: #f2eee2;
+    border-bottom: 2px solid var(--edge);
+  }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  video { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .msg {
+    position: absolute; left: 8px; bottom: 6px; max-width: calc(100% - 16px); padding: 2px 6px;
+    background: rgba(242, 238, 226, .94); color: #3a3630;
+    font-size: 16px; pointer-events: none;
+  }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 6px 8px; }
+  button {
+    font: 8px "Press Start 2P", ui-monospace, monospace; color: var(--ink);
+    background: var(--panel); border: 2px solid var(--edge); padding: 7px 8px;
+    box-shadow: 2px 2px 0 #000; cursor: pointer;
+  }
+  button[aria-pressed="true"] { color: #0b0a0d; background: var(--green); border-color: var(--green); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  label { display: flex; align-items: center; gap: 6px; color: var(--dim); }
+  input[type=range] { accent-color: var(--amber); width: 96px; }
+  output { color: var(--amber); min-width: 2.6em; }
+  .foot { color: var(--dim); padding: 0 8px 6px; }
+  .foot b { color: var(--green); font-weight: normal; }
+</style>
+</head>
+<body>
+<div class="title">
+  <span><b>ascii-cam</b> ~ tty1</span>
+  <span id="mode">DEMO</span>
+</div>
+<div class="term" id="term">
+  <canvas id="out" aria-label="ASCII rendering of the camera or demo"></canvas>
+  <video id="cam" playsinline muted></video>
+  <div class="msg" id="msg">Generated demo running. Press TURN ON CAMERA to use your webcam.</div>
+</div>
+<div class="bar">
+  <button id="camBtn" type="button" aria-pressed="false">TURN ON CAMERA</button>
+  <button id="colorBtn" type="button" aria-pressed="true">COLOR</button>
+  <label>DENSITY <input id="density" type="range" min="40" max="180" step="1" value="110"><output id="densOut">110</output></label>
+  <label>CONTRAST <input id="contrast" type="range" min="0.5" max="3" step="0.05" value="1"><output id="contOut">1.00</output></label>
+</div>
+<div class="foot">Nothing is uploaded. Camera frames stay in this tab and are never sent anywhere. Your browser asks before the camera starts.</div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "title": "Ki Spawn Bot",
+  "tagline": "Names wild pokémon from their hints",
+  "description": "Ki reads a spawn's hints, narrows the name letter by letter against the full species list, including Alolan, Galarian and other forms, and pings the people who want it. This page is a scripted demo on a made-up server with made-up users, with slash commands and a paged list menu that you can try from the buttons.",
+  "tech": [
+    "Python",
+    "discord.py",
+    "Slash commands",
+    "Firebase Realtime DB",
+    "HTML/CSS/JS chat UI"
+  ],
+  "section": "creative",
+  "kind": "web",
+  "repo": "https://github.com/Vaarun-C/Ki",
+  "controls": "Tap the buttons on messages and the chips at the bottom"
+}

@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlannerAI: optimizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --panel: #11151c;
+    --edge: #26313f;
+    --ink: #d4f2dd;
+    --dim: #6b7a8c;
+    --amber: #ffb547;
+    --cyan: #58e1ff;
+    --magenta: #ff6fc4;
+    --lime: #a6ff5c;
+    --red: #ff5d5d;
+    --pixel: "Press Start 2P", monospace;
+    --term: "VT323", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 19px/1.2 var(--term);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  .app { height: 100%; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  h1 { margin: 0; font: 12px/1.4 var(--pixel); color: var(--amber); white-space: nowrap; }
+  h1 span { color: var(--dim); font-size: 9px; margin-left: 8px; }
+  .tag { color: var(--dim); font-size: 16px; white-space: nowrap; }
+
+  .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  .panel { background: var(--panel); border: 2px solid var(--edge); position: relative; min-height: 0; }
+
+  .board { flex: 0 0 auto; height: 47%; min-height: 170px; display: flex; flex-direction: column; gap: 6px; }
+  .gantt { flex: 1; min-height: 110px; overflow: hidden; }
+  .gantt svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .view { position: absolute; right: 6px; top: 4px; display: flex; gap: 4px; z-index: 1; }
+  .btn {
+    background: var(--bg);
+    border: 2px solid var(--edge);
+    padding: 2px 7px;
+    font: 8px/1.7 var(--pixel);
+    color: var(--ink);
+  }
+  .btn:hover, .btn:focus-visible { border-color: var(--amber); outline: none; }
+  .btn.on { border-color: var(--amber); color: var(--amber); }
+  .btn:disabled { opacity: .35; cursor: default; border-color: var(--edge); color: var(--ink); }
+  .btn.primary { border-color: var(--amber); color: var(--amber); }
+  .gtitle { position: absolute; left: 8px; top: 4px; font-size: 16px; color: var(--dim); z-index: 1; pointer-events: none; }
+
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .tile { background: var(--panel); border: 2px solid var(--edge); padding: 3px 6px 4px; min-width: 0; }
+  .tile .k { font-size: 15px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .v { font: 14px/1.2 var(--pixel); color: var(--ink); margin-top: 3px; white-space: nowrap; }
+  .tile .v.good { color: var(--lime); }
+  .tile .v.bad { color: var(--red); }
+  .tile .w { font-size: 14px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .chat { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .log { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 8px; font-size: 18px; }
+  .msg { white-space: pre-wrap; margin: 0 0 3px; }
+  .msg.user { color: var(--cyan); }
+  .msg.user::before { content: "> "; color: var(--dim); }
+  .msg.reply { color: #eafff0; }
+  .msg.clarify { color: var(--amber); }
+  .msg.refuse { color: var(--magenta); }
+  .msg.step { color: var(--dim); }
+  .msg.step.ok { color: var(--lime); }
+  .msg.tree { color: var(--ink); font-size: 17px; line-height: 1.1; }
+  .msg.best { color: var(--lime); }
+  .intent {
+    margin: 3px 0 6px;
+    padding: 4px 6px;
+    border-left: 2px solid var(--lime);
+    background: #0d1310;
+    color: #b9e7c5;
+    font: 15px/1.25 var(--term);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  table.t { border-collapse: collapse; font-size: 17px; margin: 3px 0 6px; }
+  table.t td, table.t th { padding: 0 8px 0 0; text-align: left; font-weight: normal; color: var(--ink); }
+  table.t th { color: var(--dim); }
+
+  .ask { display: flex; gap: 6px; padding: 6px 8px 0; }
+  .ask input {
+    flex: 1; min-width: 0;
+    background: var(--bg);
+    border: 2px solid var(--edge);
+    padding: 3px 8px;
+    font-size: 19px;
+    outline: none;
+  }
+  .ask input:focus { border-color: var(--cyan); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px 8px; }
+  .chip {
+    background: transparent;
+    border: 1px dashed var(--edge);
+    padding: 0 6px;
+    font-size: 16px;
+    color: var(--ink);
+    text-align: left;
+  }
+  .chip:hover, .chip:focus-visible { border-color: var(--cyan); color: var(--cyan); outline: none; }
+
+  .foot { font-size: 14px; color: var(--dim); line-height: 1.05; }
+
+  /* gantt svg parts */
+  .lbl { fill: var(--dim); font-size: 15px; }
+  .tick { fill: var(--dim); font-size: 14px; }
+  .axis { stroke: var(--edge); stroke-width: 1; }
+  .rowline { stroke: #1a222d; stroke-width: 1; }
+  .bar .body { fill-opacity: .32; stroke-width: 1.6; rx: 2; }
+  .bar .late { opacity: .95; }
+  .bar .deliv { fill: #ffffff; opacity: .85; }
+  .bar .label { fill: var(--ink); font-size: 14px; pointer-events: none; }
+
+  @media (min-width: 760px) {
+    .stage { flex-direction: row; }
+    .board { height: auto; min-height: 0; width: 52%; flex: 0 0 52%; }
+    .chat { flex: 1; }
+    h1 { font-size: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar { transition: none; } }
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <h1>PLANNER<span>ai optimizer sim</span></h1>
+    <span class="tag">fictional board</span>
+  </header>
+
+  <section class="stage">
+    <div class="board">
+      <div class="panel gantt" id="ganttPanel">
+        <div class="gtitle" id="gtitle">Plan</div>
+        <div class="view" id="views">
+          <button class="btn" type="button" id="vBefore" disabled>BEFORE</button>
+          <button class="btn" type="button" id="vAfter" disabled>AFTER</button>
+        </div>
+        <svg id="gantt" role="img" aria-label="Gantt chart of strips on four lines"></svg>
+      </div>
+      <div class="metrics">
+        <div class="tile"><div class="k">PLAN HEALTH</div><div class="v" id="mHealth">-</div><div class="w" id="wHealth"></div></div>
+        <div class="tile"><div class="k">LATE STRIPS</div><div class="v" id="mLate">-</div><div class="w" id="wLate"></div></div>
+        <div class="tile"><div class="k">DELAYED PCS</div><div class="v" id="mDelayed">-</div><div class="w" id="wDelayed"></div></div>
+        <div class="tile"><div class="k">STRIPS</div><div class="v" id="mStrips">-</div><div class="w" id="wStrips"></div></div>
+      </div>
+    </div>
+
+    <div class="panel chat">
+      <div class="log" id="log" aria-live="polite"></div>
+      <form class="ask" id="form" autocomplete="off">
+        <input id="q" type="text" maxlength="120" placeholder="Ask, or describe the scope to optimize" aria-label="Request">
+        <button class="btn primary" type="submit">RUN</button>
+      </form>
+      <div class="chips" id="chips"></div>
+    </div>
+  </section>
+  <footer class="foot">Runs in your browser. The intent step uses rules that mirror the production classifier. Plan Health = share of strips finishing by their delivery date.</footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  /* ------------------------------------------------------------------
+     Fictional board. Days are counted from 2 Nov; one unit is a day.
+     Each strip: id, line, buyer, style, pieces, ready (earliest start),
+     duration in days, delivery day.
+     ------------------------------------------------------------------ */
+
+  const BOARD_START = Date.UTC(2026, 10, 2);
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const DAYS = 22;
+  const LINES = [
+    { id: 'L1', plant: 'North' }, { id: 'L2', plant: 'North' },
+    { id: 'L3', plant: 'South' }, { id: 'L4', plant: 'South' },
+  ];
+  const BUYER_COLOR = { 'Brightwater': '#58e1ff', 'Kestrel Outfitters': '#ffb547', 'Oakline': '#ff6fc4' };
+  const BUYERS = Object.keys(BUYER_COLOR);
+
+  const ROWS = [
+    ['S-101', 'L1', 'Brightwater', 'ST-101', 800, 0, 4, 5],
+    ['S-102', 'L1', 'Kestrel Outfitters', 'ST-204', 600, 5, 5, 8],
+    ['S-103', 'L1', 'Brightwater', 'ST-101', 500, 10, 3, 13],
+    ['S-104', 'L1', 'Oakline', 'ST-310', 700, 13, 4, 15],
+    ['S-201', 'L2', 'Oakline', 'ST-310', 400, 0, 3, 4],
+    ['S-202', 'L2', 'Kestrel Outfitters', 'ST-204', 900, 4, 6, 10],
+    ['S-203', 'L2', 'Brightwater', 'ST-101', 600, 10, 4, 11],
+    ['S-204', 'L2', 'Kestrel Outfitters', 'ST-118', 300, 14, 2, 16],
+    ['S-301', 'L3', 'Brightwater', 'ST-101', 500, 1, 3, 6],
+    ['S-302', 'L3', 'Oakline', 'ST-310', 800, 5, 5, 8],
+    ['S-303', 'L3', 'Kestrel Outfitters', 'ST-204', 400, 10, 2, 14],
+    ['S-304', 'L3', 'Brightwater', 'ST-118', 500, 12, 5, 17],
+    ['S-401', 'L4', 'Kestrel Outfitters', 'ST-118', 500, 0, 2, 3],
+    ['S-402', 'L4', 'Oakline', 'ST-101', 400, 4, 2, 5],
+    ['S-403', 'L4', 'Brightwater', 'ST-101', 900, 6, 7, 12],
+    ['S-404', 'L4', 'Oakline', 'ST-204', 300, 13, 3, 14],
+  ];
+
+  const dayDate = d => new Date(BOARD_START + d * 864e5).toISOString().slice(0, 10);
+  const dayLabel = d => { const x = new Date(BOARD_START + d * 864e5); return x.getUTCDate() + ' ' + MONTHS[x.getUTCMonth()]; };
+
+  /* ------------------------------------------------------------------
+     Planning core. Strips on a line run back to back. A strip starts
+     at the later of its ready time and the end of the strip before it.
+     ------------------------------------------------------------------ */
+
+  const clone = o => structuredClone(o);
+
+  function freshBoard() {
+    const board = Object.fromEntries(LINES.map(l => [l.id, []]));
+    ROWS.forEach(([id, line, buyer, style, qty, ready, dur, deliv]) =>
+      board[line].push({ id, line, buyer, style, qty, ready, dur, deliv }));
+    Object.values(board).forEach(seq => seq.sort((a, b) => a.ready - b.ready));
+    return schedule(board);
+  }
+
+  function schedule(board) {
+    for (const seq of Object.values(board)) {
+      let prev = 0;
+      for (const s of seq) {
+        s.start = Math.max(s.ready, prev);
+        s.end = s.start + s.dur;
+        prev = s.end;
+        s.late = s.end > s.deliv + 1e-6;
+        s.delayed = s.late ? Math.min(s.qty, Math.round(s.qty * (s.end - s.deliv) / s.dur)) : 0;
+      }
+    }
+    return board;
+  }
+
+  const flat = b => Object.values(b).flat();
+  const delayedTotal = b => flat(b).reduce((a, s) => a + s.delayed, 0);
+
+  function styleSwitches(b) {
+    let n = 0;
+    for (const seq of Object.values(b)) for (let i = 1; i < seq.length; i++) if (seq[i].style !== seq[i - 1].style) n++;
+    return n;
+  }
+
+  function metrics(b) {
+    const all = flat(b), late = all.filter(s => s.late);
+    return {
+      total: all.length,
+      late: late.length,
+      delayed: delayedTotal(b),
+      health: Math.round((1 - late.length / all.length) * 100),
+      switches: styleSwitches(b),
+    };
+  }
+
+  function inScope(s, scope) {
+    if (!scope || scope.all) return true;
+    if (scope.buyers && scope.buyers.length && !scope.buyers.includes(s.buyer)) return false;
+    if (scope.lines && scope.lines.length && !scope.lines.includes(s.line)) return false;
+    if (scope.strips && scope.strips.length && !scope.strips.includes(s.id)) return false;
+    if (scope.days && (s.deliv < scope.days[0] || s.deliv > scope.days[1])) return false;
+    return true;
+  }
+
+  const lateIds = (b, scope) => flat(b)
+    .filter(s => s.late && inScope(s, scope))
+    .sort((a, c) => a.deliv - c.deliv || a.id.localeCompare(c.id))
+    .map(s => s.id);
+
+  function findStrip(b, id) {
+    for (const seq of Object.values(b)) {
+      const s = seq.find(x => x.id === id);
+      if (s) return { s, seq };
+    }
+    return null;
+  }
+
+  // Run fn on a copy. Keep the copy if delays fell (strict) or did not rise (lenient).
+  function attempt(board, fn, strict = true) {
+    const t = clone(board);
+    fn(t);
+    schedule(t);
+    const before = delayedTotal(board), after = delayedTotal(t);
+    return (strict ? after < before : after <= before) ? t : board;
+  }
+
+  // Pull a late strip earlier: it moves ahead of the strips before it so it can finish
+  // a day before delivery. The strips it passes are repacked behind it.
+  function pullForward(board, scope) {
+    for (const id of lateIds(board, scope)) {
+      board = attempt(board, t => {
+        const hit = findStrip(t, id);
+        if (!hit) return;
+        const { s, seq } = hit;
+        const idx = seq.indexOf(s);
+        if (idx <= 0) return;
+        const target = Math.max(s.deliv - 1 - s.dur, seq[0].start);
+        if (target >= s.start - 1e-6) return;
+        seq.splice(idx, 1);
+        let j = seq.findIndex(x => x.start >= target - 1e-6);
+        if (j < 0) j = seq.length;
+        seq.splice(j, 0, s);
+        s.ready = target;
+      });
+    }
+    return board;
+  }
+
+  // The gap on another line that fits `need` days, on-time first, then the smallest.
+  function bestGap(board, exclude, need, deliv) {
+    let best = null;
+    for (const [lineId, seq] of Object.entries(board)) {
+      if (lineId === exclude) continue;
+      let prev = 0;
+      const gaps = [];
+      for (const x of seq) {
+        if (x.start - prev > 1e-6) gaps.push({ line: lineId, start: prev, len: x.start - prev });
+        prev = Math.max(prev, x.end);
+      }
+      gaps.push({ line: lineId, start: prev, len: Infinity });
+      for (const g of gaps) {
+        if (g.len + 1e-6 < need) continue;
+        const rank = [g.start + need <= deliv + 1e-6 ? 0 : 1, g.len];
+        if (!best || rank[0] < best.rank[0] || (rank[0] === best.rank[0] && rank[1] < best.rank[1])) best = { ...g, rank };
+      }
+    }
+    return best;
+  }
+
+  // Cut the late part off a strip and place it in a gap on another line.
+  function chopAndMove(board, scope) {
+    for (const id of lateIds(board, scope)) {
+      board = attempt(board, t => {
+        const hit = findStrip(t, id);
+        if (!hit || !hit.s.late) return;
+        const { s, seq } = hit;
+        const lateDays = s.end - s.deliv;
+        const moved = s.delayed;
+        const gap = bestGap(t, s.line, lateDays, s.deliv);
+        if (!gap) return;
+        const piece = {
+          id: s.id + 'b', line: gap.line, buyer: s.buyer, style: s.style,
+          qty: moved, ready: gap.start, dur: lateDays, deliv: s.deliv,
+        };
+        const dest = t[gap.line];
+        let j = dest.findIndex(x => x.start > gap.start + 1e-6);
+        if (j < 0) j = dest.length;
+        dest.splice(j, 0, piece);
+        if (s.qty - moved <= 0 || s.dur - lateDays <= 1e-6) seq.splice(seq.indexOf(s), 1);
+        else { s.qty -= moved; s.dur -= lateDays; }
+      });
+    }
+    return board;
+  }
+
+  // Group strips of one style together on each line, earliest delivery first.
+  function sameStyle(board, scope) {
+    return attempt(board, t => {
+      for (const seq of Object.values(t)) {
+        const slots = [];
+        seq.forEach((s, i) => { if (inScope(s, scope)) slots.push(i); });
+        if (slots.length < 2) continue;
+        const picked = slots.map(i => seq[i]);
+        const first = {};
+        picked.forEach(s => { first[s.style] = Math.min(first[s.style] ?? Infinity, s.deliv); });
+        const sorted = [...picked].sort((a, c) =>
+          first[a.style] - first[c.style] || a.style.localeCompare(c.style) || a.deliv - c.deliv);
+        slots.forEach((slot, k) => { seq[slot] = sorted[k]; });
+      }
+    }, false);
+  }
+
+  const OPS = [
+    { name: 'Pull forward', fn: pullForward },
+    { name: 'Chop & move', fn: chopAndMove },
+    { name: 'Same-style batch', fn: sameStyle },
+  ];
+
+  // Depth 2, branching 3: 1 + 3 + 9 = 13 scenarios.
+  function buildTree(root, scope, depth = 2) {
+    const top = { label: 'as is', path: [], board: root, m: metrics(root), kids: [] };
+    let frontier = [top];
+    for (let d = 0; d < depth; d++) {
+      const next = [];
+      for (const node of frontier) {
+        for (const op of OPS) {
+          const board = op.fn(node.board, scope);
+          const child = { label: op.name, path: [...node.path, op.name], board, m: metrics(board), kids: [] };
+          node.kids.push(child);
+          next.push(child);
+        }
+      }
+      frontier = next;
+    }
+    return top;
+  }
+
+  const allNodes = n => [n, ...n.kids.flatMap(allNodes)];
+  const bestNode = top => allNodes(top).sort((a, c) =>
+    c.m.health - a.m.health || a.m.delayed - c.m.delayed || a.path.length - c.path.length || a.m.switches - c.m.switches)[0];
+
+  /* ------------------------------------------------------------------
+     Intent classifier (rules). Mirrors the production intents:
+     greeting, clarify, unsupported_goal, filter_optimize, analyze, unknown.
+     ------------------------------------------------------------------ */
+
+  const BUYER_RE = [
+    { name: 'Brightwater', re: /\bbrightwater\b/ },
+    { name: 'Kestrel Outfitters', re: /\bkestrel\b|\boutfitters\b/ },
+    { name: 'Oakline', re: /\boakline\b/ },
+  ];
+
+  function parseScope(lower) {
+    const scope = { buyers: [], lines: [], strips: [], days: null, all: false };
+    const unknown = { buyers: [], lines: [] };
+    BUYER_RE.forEach(b => { if (b.re.test(lower)) scope.buyers.push(b.name); });
+    const bm = lower.match(/\bbuyer\s+([a-z][a-z-]*)/);
+    if (bm && !scope.buyers.length) unknown.buyers.push(bm[1]);
+    (lower.match(/\bl[1-4]\b/g) || []).forEach(x => scope.lines.push(x.toUpperCase()));
+    for (const m of lower.matchAll(/\bline\s+l?(\d+)\b/g)) {
+      const code = 'L' + m[1];
+      if (LINES.some(l => l.id === code)) { if (!scope.lines.includes(code)) scope.lines.push(code); }
+      else unknown.lines.push(code);
+    }
+    (lower.match(/\bs-\d{3}\b/g) || []).forEach(x => scope.strips.push(x.toUpperCase()));
+    if (/\bthis week\b/.test(lower)) scope.days = [0, 6];
+    if (/\bnext week\b/.test(lower)) scope.days = [7, 13];
+    if (/\b(all|everything|whole board|entire board)\b/.test(lower)) scope.all = true;
+    const any = scope.all || scope.buyers.length || scope.lines.length || scope.strips.length || scope.days;
+    return { scope: any ? scope : null, unknown };
+  }
+
+  function describe(scope) {
+    if (scope.all) return 'all strips';
+    const parts = [];
+    if (scope.buyers.length) parts.push('buyer ' + scope.buyers.join(', '));
+    if (scope.lines.length) parts.push('line ' + scope.lines.join(', '));
+    if (scope.strips.length) parts.push('strips ' + scope.strips.join(', '));
+    if (scope.days) parts.push(scope.days[0] === 0 ? 'this week' : 'next week');
+    return parts.join(' · ');
+  }
+
+  function filterIntent(scope) {
+    const stripFilter = {
+      targetStripIds: scope.strips,
+      targetBuyers: scope.buyers,
+      targetLineCodes: scope.lines,
+      excludeStripIds: [], excludeBuyers: [], excludeLineCodes: [],
+      timeframe: scope.days ? { from: dayDate(scope.days[0]), to: dayDate(scope.days[1]) } : null,
+      mode: 'strict',
+      scopeDescription: scope.all ? 'all delayed strips' : describe(scope),
+    };
+    if (scope.all) stripFilter.scopeDescription = 'all strips';
+    return { intent: 'filter_optimize', reply: '', clarifyType: null, params: { stripFilter, topic: null, scope } };
+  }
+
+  function classify(text, pending) {
+    const lower = text.toLowerCase().trim();
+    const { scope, unknown } = parseScope(lower);
+    const bad = unknown.buyers.length || unknown.lines.length;
+
+    if (pending === 'scope' && scope && !bad) return filterIntent(scope);
+
+    if (/^(hi|hello|hey|good (morning|afternoon|evening))\b/.test(lower)) {
+      return reply('greeting', 'Hi. I optimize one thing: fewer late orders. Try "optimize buyer Oakline" or "which strips are late?"');
+    }
+    if (/\b(efficien|cost|cheap|throughput|utili[sz]|speed|faster|quicker|profit|output|money)/.test(lower)) {
+      return reply('unsupported_goal', 'PlannerAI only minimizes delays. Efficiency, cost, speed and throughput are out of scope.');
+    }
+    if (/\b(optimi[sz]e|fix|improve|reschedule|re-?plan|clean up|sort out|make it better)\b/.test(lower)) {
+      if (unknown.buyers.length) {
+        const name = unknown.buyers[0].replace(/^./, c => c.toUpperCase());
+        return reply('clarify', `I couldn't find buyer ${name} on the current board. The buyers I can see are: ${BUYERS.join(', ')}. Which one did you mean?`, 'buyer');
+      }
+      if (unknown.lines.length) {
+        return reply('clarify', `I couldn't find line ${unknown.lines[0]}. The lines I can see are L1, L2, L3 and L4. Which one did you mean?`, 'line');
+      }
+      if (scope) return filterIntent(scope);
+      return reply('clarify', 'What scope do you want to optimize: a buyer, a line, a strip ID, a timeframe, or all strips?', 'scope');
+    }
+    if (/\?$|^(how|what|which|show|list|status|why|who|count|when|where)\b/.test(lower)) {
+      return { intent: 'analyze', reply: '', clarifyType: null, params: { stripFilter: null, topic: /late|delayed|behind/.test(lower) ? 'late' : 'summary' } };
+    }
+    return reply('unknown', 'Try "optimize buyer Oakline", "optimize line L1", or "which strips are late?"');
+  }
+
+  function reply(intent, text, clarifyType = null) {
+    return { intent, reply: text, clarifyType, params: { stripFilter: null, topic: null } };
+  }
+
+  /* ------------------------------------------------------------------
+     UI
+     ------------------------------------------------------------------ */
+
+  const $ = id => document.getElementById(id);
+  const logEl = $('log');
+  const inputEl = $('q');
+  const chipsEl = $('chips');
+  const svg = d3.select('#gantt');
+  const panel = $('ganttPanel');
+
+  const state = {
+    plan: freshBoard(),
+    frames: null,        // { before, after, scope } from the last optimization
+    view: 'plan',        // plan | before | after
+    pending: null,       // 'scope' after a scope clarification
+    scope: null,         // scope to dim outside of
+    run: 0,
+  };
+  const original = clone(state.plan);
+
+  const wait = ms => new Promise(res => setTimeout(res, ms));
+
+  function say(cls, text) {
+    const el = document.createElement('div');
+    el.className = 'msg ' + cls;
+    el.textContent = text;
+    logEl.appendChild(el);
+    logEl.scrollTop = logEl.scrollHeight;
+    return el;
+  }
+
+  function sayIntent(obj) {
+    const el = document.createElement('div');
+    el.className = 'intent';
+    const shown = { intent: obj.intent, clarifyType: obj.clarifyType, params: { stripFilter: obj.params.stripFilter, topic: obj.params.topic } };
+    el.textContent = JSON.stringify(shown);
+    logEl.appendChild(el);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function sayTable(headers, rows) {
+    const t = document.createElement('table');
+    t.className = 't';
+    const head = document.createElement('tr');
+    headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
+    t.appendChild(head);
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      r.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+      t.appendChild(tr);
+    });
+    logEl.appendChild(t);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function answerAnalyze(topic, board) {
+    const m = metrics(board);
+    if (topic === 'late') {
+      const late = flat(board).filter(s => s.late).sort((a, b) => b.delayed - a.delayed);
+      say('reply', `${m.late} of ${m.total} strips finish after delivery. Most delayed first:`);
+      sayTable(['strip', 'line', 'buyer', 'late by', 'pieces'],
+        late.map(s => [s.id, s.line, s.buyer, (s.end - s.deliv).toFixed(1) + ' d', String(s.delayed)]));
+    } else {
+      say('reply', 'Board summary, as it stands now:');
+      sayTable(['measure', 'value'], [
+        ['Plan Health', m.health + '%'],
+        ['Late strips', `${m.late} / ${m.total}`],
+        ['Delayed pieces', String(m.delayed)],
+      ]);
+    }
+  }
+
+  function setTiles(frame, compare) {
+    const m = metrics(frame);
+    const c = compare ? metrics(compare) : null;
+    $('mHealth').textContent = m.health + '%';
+    $('mHealth').className = 'v ' + (m.health >= 80 ? 'good' : m.health < 60 ? 'bad' : '');
+    $('mLate').textContent = `${m.late}`;
+    $('mDelayed').textContent = m.delayed.toLocaleString('en-US');
+    $('mStrips').textContent = String(m.total);
+    $('wHealth').textContent = c ? `was ${c.health}%` : '';
+    $('wLate').textContent = c ? `was ${c.late}` : '';
+    $('wDelayed').textContent = c ? `was ${c.delayed.toLocaleString('en-US')}` : '';
+    $('wStrips').textContent = c && c.total !== m.total ? `was ${c.total}` : '';
+  }
+
+  /* ----- Gantt ----- */
+
+  const LEFT = 56, TOP = 22, AXIS = 18;
+  let geo = { w: 300, h: 200, k: 10, rowH: 40 };
+  const gDefs = svg.append('defs');
+  gDefs.append('pattern').attr('id', 'hatch').attr('patternUnits', 'userSpaceOnUse')
+    .attr('width', 6).attr('height', 6).attr('patternTransform', 'rotate(45)')
+    .call(p => {
+      p.append('rect').attr('width', 6).attr('height', 6).attr('fill', '#ff5d5d').attr('fill-opacity', 0.3);
+      p.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 6).attr('stroke', '#ff5d5d').attr('stroke-width', 3);
+    });
+  const gAxis = svg.append('g');
+  const gRows = svg.append('g');
+  const gBars = svg.append('g');
+
+  function layoutGantt() {
+    const r = panel.getBoundingClientRect();
+    geo.w = r.width || 300;
+    geo.h = r.height || 200;
+    geo.k = (geo.w - LEFT - 8) / DAYS;
+    geo.rowH = (geo.h - TOP - AXIS) / LINES.length;
+    gAxis.selectAll('*').remove();
+    gRows.selectAll('*').remove();
+    LINES.forEach((l, i) => {
+      const y = TOP + i * geo.rowH;
+      gRows.append('line').attr('class', 'rowline').attr('x1', LEFT).attr('x2', geo.w - 4).attr('y1', y + geo.rowH).attr('y2', y + geo.rowH);
+      gRows.append('text').attr('class', 'lbl').attr('x', 4).attr('y', y + geo.rowH / 2 - 2).text(l.id);
+      gRows.append('text').attr('class', 'tick').attr('x', 4).attr('y', y + geo.rowH / 2 + 12).text(l.plant);
+    });
+    const axisY = geo.h - AXIS + 12;
+    gAxis.append('line').attr('class', 'axis').attr('x1', LEFT).attr('x2', geo.w - 4).attr('y1', geo.h - AXIS).attr('y2', geo.h - AXIS);
+    [0, 7, 14, 21].forEach(d => {
+      gAxis.append('line').attr('class', 'axis').attr('x1', LEFT + d * geo.k).attr('x2', LEFT + d * geo.k).attr('y1', TOP).attr('y2', geo.h - AXIS);
+      gAxis.append('text').attr('class', 'tick').attr('x', LEFT + d * geo.k + 2).attr('y', axisY).text(dayLabel(d));
+    });
+  }
+
+  function barsOf(board) {
+    const out = [];
+    LINES.forEach((l, row) => {
+      (board[l.id] || []).forEach(s => out.push({
+        id: s.id, row, buyer: s.buyer, start: s.start, end: s.end, dur: s.dur,
+        deliv: s.deliv, qty: s.qty, delayed: s.delayed, late: s.late,
+        lateDays: s.late ? Math.min(s.dur, s.end - s.deliv) : 0,
+        dim: !!(state.scope && !inScope(s, state.scope)),
+      }));
+    });
+    return out;
+  }
+
+  function drawGantt(board, animate) {
+    const ms = animate ? 900 : 0;
+    const data = barsOf(board);
+    const bh = geo.rowH - 12;
+    const yOf = d => TOP + d.row * geo.rowH + 6;
+
+    const sel = gBars.selectAll('g.bar').data(data, d => d.id);
+    sel.exit().transition().duration(ms).style('opacity', 0).remove();
+
+    const enter = sel.enter().append('g').attr('class', 'bar').style('opacity', 0);
+    enter.append('rect').attr('class', 'body').attr('height', bh);
+    enter.append('rect').attr('class', 'late').attr('height', bh).attr('fill', 'url(#hatch)');
+    enter.append('rect').attr('class', 'deliv').attr('width', 2);
+    enter.append('text').attr('class', 'label').attr('y', bh / 2 + 5);
+
+    const all = enter.merge(sel);
+    all.attr('transform', d => `translate(${LEFT + d.start * geo.k},${yOf(d)})`);
+    all.select('rect.body')
+      .attr('fill', d => BUYER_COLOR[d.buyer]).attr('stroke', d => d.late ? '#ff5d5d' : BUYER_COLOR[d.buyer]);
+    all.select('rect.late').attr('y', 0);
+    all.select('rect.deliv')
+      .attr('height', bh + 6).attr('y', -3);
+
+    all.transition().duration(ms)
+      .attr('transform', d => `translate(${LEFT + d.start * geo.k},${yOf(d)})`)
+      .style('opacity', d => d.dim ? 0.22 : 1);
+    all.select('rect.body').transition().duration(ms)
+      .attr('width', d => Math.max(2, (d.end - d.start) * geo.k));
+    all.select('rect.late').transition().duration(ms)
+      .attr('x', d => Math.max(0, (d.end - d.start - d.lateDays) * geo.k))
+      .attr('width', d => d.lateDays * geo.k);
+    all.select('rect.deliv').transition().duration(ms)
+      .attr('x', d => (d.deliv - d.start) * geo.k);
+    all.select('text.label')
+      .attr('x', 4)
+      .text(d => d.id)
+      .attr('opacity', d => (d.end - d.start) * geo.k > 34 ? 1 : 0);
+  }
+
+  function showFrame(animateFromBefore) {
+    let board;
+    if (state.view === 'before' && state.frames) board = state.frames.before;
+    else if (state.view === 'after' && state.frames) board = state.frames.after;
+    else board = state.plan;
+
+    $('gtitle').textContent = state.view === 'plan' ? 'Plan' : state.view === 'before' ? 'Before' : 'After';
+    $('vBefore').classList.toggle('on', state.view === 'before');
+    $('vAfter').classList.toggle('on', state.view === 'after');
+    drawGantt(board, false);
+    setTiles(board, state.frames && state.view === 'after' ? state.frames.before : null);
+    return board;
+  }
+
+  $('vBefore').addEventListener('click', () => { state.view = 'before'; showFrame(); });
+  $('vAfter').addEventListener('click', () => { state.view = 'after'; showFrame(); });
+
+  /* ----- Chat flow ----- */
+
+  async function handle(text) {
+    const my = ++state.run;
+    const alive = () => my === state.run;
+
+    say('user', text);
+    const intent = classify(text, state.pending);
+    sayIntent(intent);
+    state.pending = intent.clarifyType === 'scope' ? 'scope' : null;
+
+    if (intent.intent === 'filter_optimize') {
+      await optimize(intent.params.scope, intent.params.stripFilter.scopeDescription, alive);
+      return;
+    }
+    if (intent.intent === 'analyze') {
+      answerAnalyze(intent.params.topic, state.plan);
+      return;
+    }
+    say(intent.intent === 'unsupported_goal' ? 'refuse' : intent.clarifyType ? 'clarify' : 'reply', intent.reply);
+  }
+
+  async function optimize(scope, label, alive) {
+    const before = clone(state.plan);
+    const inside = flat(before).filter(s => inScope(s, scope));
+    const insideLate = inside.filter(s => s.late).length;
+    say('step', `Scope: ${label}. ${inside.length} strip(s) in scope, ${insideLate} late.`);
+    await wait(500); if (!alive()) return;
+
+    say('step', 'Expanding the decision tree: depth 2, branching 3, 13 scenarios.');
+    const top = buildTree(before, scope, 2);
+    const best = bestNode(top);
+    await wait(400); if (!alive()) return;
+
+    // Show the tree as it is expanded. Best is starred.
+    const rows = [];
+    (function walk(node, depth) {
+      node.kids.forEach(k => { rows.push({ depth, node: k }); walk(k, depth + 1); });
+    })(top, 0);
+    say('step', `${top.label}  ${top.m.health}%`);
+    for (const { depth, node } of rows) {
+      await wait(90); if (!alive()) return;
+      const star = node === best ? '  *' : '';
+      const pad = '  '.repeat(depth);
+      say('tree', `${pad}+- ${node.label}  ${node.m.health}%${star}`);
+    }
+    await wait(300); if (!alive()) return;
+
+    if (!best.path.length) {
+      say('reply', `No change beats the current plan for ${label}. Plan Health stays at ${top.m.health}%.`);
+      state.scope = scope;
+      return;
+    }
+
+    const names = best.path.join(' then ');
+    say('best', `Best path: ${names}. Plan Health ${top.m.health}% -> ${best.m.health}%, late strips ${top.m.late} -> ${best.m.late}.`);
+    await wait(300); if (!alive()) return;
+
+    state.frames = { before, after: best.board, scope };
+    state.plan = clone(best.board);
+    state.scope = scope;
+    state.view = 'after';
+    $('vBefore').disabled = false;
+    $('vAfter').disabled = false;
+    // draw the before frame, then animate to after
+    drawGantt(before, false);
+    setTiles(before, null);
+    await wait(120); if (!alive()) return;
+    $('gtitle').textContent = 'After';
+    $('vBefore').classList.remove('on');
+    $('vAfter').classList.add('on');
+    drawGantt(best.board, true);
+    setTiles(best.board, before);
+    say('step ok', `Applied to the plan. Ask again to optimize further, or RESET to restore the original board.`);
+  }
+
+  function resetPlan() {
+    state.run++;
+    state.plan = clone(original);
+    state.frames = null;
+    state.scope = null;
+    state.view = 'plan';
+    state.pending = null;
+    $('vBefore').disabled = true;
+    $('vAfter').disabled = true;
+    say('step', 'Board reset to the original plan.');
+    showFrame();
+  }
+
+  const CHIPS = [
+    { label: 'optimize buyer Oakline', text: 'optimize buyer Oakline' },
+    { label: 'optimize line L1', text: 'optimize line L1' },
+    { label: 'optimize everything', text: 'optimize everything' },
+    { label: 'which strips are late?', text: 'which strips are late?' },
+    { label: 'fix the plan', text: 'fix the plan' },
+    { label: 'make it cheaper', text: 'make it cheaper' },
+    { label: 'RESET BOARD', reset: true },
+  ];
+
+  CHIPS.forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = c.label;
+    b.addEventListener('click', () => {
+      if (c.reset) return resetPlan();
+      inputEl.value = c.text;
+      handle(c.text);
+    });
+    chipsEl.appendChild(b);
+  });
+
+  $('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = inputEl.value.trim();
+    if (!text) return;
+    handle(text);
+    inputEl.value = '';
+  });
+
+  /* ----- start ----- */
+
+  say('step', 'Plan loaded: 16 strips on 4 lines, two plants, three buyers. Pick a request or type one.');
+  say('step', 'Try "optimize buyer Oakline", then "fix the plan" to see a clarifying question.');
+  layoutGantt();
+  showFrame();
+  new ResizeObserver(() => { layoutGantt(); showFrame(); }).observe(panel);
+})();
+</script>
+</body>
+</html>

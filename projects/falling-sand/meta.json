@@ -1,0 +1,9 @@
+{
+  "title": "Falling Sand",
+  "tagline": "Cellular automata sand, poured by hand.",
+  "description": "A falling-sand cellular automaton written in Python with pygame. Each grid cell is either empty or holds a coloured grain, and grains fall straight down or diagonally into empty space every frame. This demo ports the same grid rules and hue-cycling colour gradient to canvas, so you can drag or touch to pour sand.",
+  "tech": ["Python", "pygame"],
+  "kind": "sim",
+  "repo": "https://github.com/Vaarun-C/falling-sand",
+  "controls": "drag / touch to pour · C or CLEAR to reset"
+}

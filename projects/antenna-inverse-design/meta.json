@@ -1,0 +1,10 @@
+{
+  "title": "Antenna Inverse Design",
+  "tagline": "Find antenna dimensions from a target S11 curve",
+  "description": "Pick a target S11 dip and watch the search find dimensions for a stub-loaded line. It follows the repo's workflow: Latin hypercube sampling, an MLP surrogate trained on the samples, an inverse guess by gradient descent on the surrogate, then annealing refinement against the simulator. The EM solver is replaced by an analytic stand-in, so the curves show how the search behaves rather than HFSS results.",
+  "tech": ["JavaScript", "Canvas", "MLP surrogate", "Latin hypercube", "Simulated annealing", "Python", "PyTorch", "HFSS"],
+  "section": "ml",
+  "kind": "ml",
+  "repo": null,
+  "controls": "Drag the dip or tap the plot to set a target · R re-runs the search · space pauses"
+}

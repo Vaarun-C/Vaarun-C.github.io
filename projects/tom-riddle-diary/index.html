@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>a diary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Caveat:wght@400;600;700&family=Mea+Culpa&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --leather-dark:#17130f;
+    --leather:#2b2116;
+    --leather-light:#473520;
+    --parchment:#ece0c2;
+    --parchment-dim:#ddceaa;
+    --parchment-shadow:#c2ab7d;
+    --gold:#b7965a;
+    --gold-bright:#e0c07f;
+    --ink-her:#8a5a34;
+    --ink-her-soft:#5a4530;
+    --ink-tom:#3b2317;
+    --ink-tom-glow:rgba(59,35,23,0.30);
+    --danger:#8a3a2c;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    height:100%;
+    margin:0;
+    background:var(--leather-dark);
+    font-family:'Cormorant Garamond', serif;
+    overflow:hidden;
+  }
+  body{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001s !important; transition-duration:0.001s !important; }
+  }
+
+  /* ---------- shared layout shell ---------- */
+  .stage{
+    position:relative;
+    width:100%;
+    height:100%;
+    max-width:640px;
+    max-height:920px;
+    margin:auto;
+  }
+  .screen{
+    position:absolute;
+    inset:0;
+    display:none;
+    flex-direction:column;
+  }
+  .screen.active{ display:flex; }
+
+  /* ---------- cover ---------- */
+  #coverScreen{
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    background:
+      radial-gradient(120% 90% at 50% 15%, rgba(255,255,255,0.05), transparent 60%),
+      linear-gradient(155deg, var(--leather-light) 0%, var(--leather) 45%, var(--leather-dark) 100%);
+    border-radius:6px;
+  }
+  .cover-panel{
+    width:78%;
+    max-width:380px;
+    aspect-ratio:3/4.3;
+    border:2px solid var(--gold);
+    border-radius:4px;
+    position:relative;
+    box-shadow:
+      inset 0 0 0 1px rgba(183,150,90,0.25),
+      inset 0 0 60px rgba(0,0,0,0.55),
+      0 30px 60px rgba(0,0,0,0.6);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(160deg, #362a1b, #1c150e 70%);
+  }
+  .cover-panel::before{
+    content:"";
+    position:absolute;
+    inset:14px;
+    border:1px solid rgba(183,150,90,0.35);
+    border-radius:2px;
+  }
+  .cover-title{
+    font-family:'Cinzel Decorative', serif;
+    color:var(--gold-bright);
+    text-align:center;
+    letter-spacing:0.14em;
+    font-size:clamp(20px,5.4vw,30px);
+    text-shadow:0 1px 0 rgba(0,0,0,0.6), 0 0 18px rgba(224,192,127,0.15);
+  }
+  .cover-sub{
+    display:block;
+    margin-top:10px;
+    font-family:'Cormorant Garamond', serif;
+    font-variant:small-caps;
+    letter-spacing:0.3em;
+    font-size:12px;
+    color:var(--parchment-shadow);
+    opacity:0.75;
+  }
+  .cover-hint{
+    position:absolute;
+    bottom:6%;
+    left:0; right:0;
+    text-align:center;
+    color:var(--parchment-shadow);
+    font-size:13px;
+    letter-spacing:0.08em;
+    opacity:0;
+    animation:hintFade 3.2s ease-in-out infinite;
+  }
+  @keyframes hintFade{ 0%,100%{opacity:0;} 50%{opacity:0.55;} }
+
+  /* ---------- diary (her) view ---------- */
+  #diaryScreen{
+    padding:18px;
+  }
+  .frame{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    background:linear-gradient(160deg, var(--leather-light), var(--leather) 60%, var(--leather-dark));
+    border-radius:8px;
+    border:1px solid rgba(183,150,90,0.3);
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 20px 50px rgba(0,0,0,0.55);
+    padding:14px;
+    position:relative;
+    overflow:hidden;
+  }
+  .page{
+    flex:1;
+    background:
+      radial-gradient(140% 60% at 50% 0%, rgba(0,0,0,0.08), transparent 55%),
+      var(--parchment);
+    border-radius:3px;
+    box-shadow:inset 0 0 40px rgba(90,60,20,0.25), 0 4px 18px rgba(0,0,0,0.4);
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .page-grain{
+    position:absolute; inset:0;
+    opacity:0.5;
+    mix-blend-mode:multiply;
+    pointer-events:none;
+  }
+  .page-header{
+    text-align:center;
+    padding:14px 10px 8px;
+    font-family:'Cormorant Garamond', serif;
+    font-variant:small-caps;
+    letter-spacing:0.2em;
+    font-size:12px;
+    color:var(--ink-her-soft);
+    border-bottom:1px solid var(--parchment-shadow);
+    opacity:0.8;
+  }
+  .entries{
+    flex:1;
+    overflow-y:auto;
+    padding:14px 18px 6px;
+    scrollbar-width:thin;
+  }
+  .entry{
+    margin-bottom:16px;
+    line-height:1.35;
+    font-size:22px;
+    word-wrap:break-word;
+    animation:settle 0.5s ease both;
+  }
+  @keyframes settle{
+    from{ opacity:0; transform:translateY(6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .entry.her{
+    font-family:'Caveat', cursive;
+    color:var(--ink-her);
+    text-align:left;
+  }
+  .entry.tom{
+    font-family:'Mea Culpa', cursive;
+    color:var(--ink-tom);
+    text-align:right;
+    text-shadow:0 0 10px var(--ink-tom-glow);
+    font-size:24px;
+  }
+  .waiting{
+    text-align:right;
+    font-family:'Mea Culpa', cursive;
+    color:var(--ink-tom);
+    opacity:0;
+    font-size:20px;
+    letter-spacing:0.15em;
+    height:0;
+    overflow:hidden;
+    transition:opacity 0.4s ease;
+  }
+  .waiting.show{
+    opacity:0.55;
+    height:auto;
+    padding-bottom:6px;
+    animation:pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:0.25;} 50%{opacity:0.65;} }
+
+  .inline-input-wrap{
+    display:flex;
+    align-items:flex-end;
+    gap:6px;
+    padding:0 0 18px;
+  }
+  .inline-quill{
+    flex:1;
+    resize:none;
+    border:none;
+    background:transparent;
+    font-family:'Caveat', cursive;
+    font-size:22px;
+    color:var(--ink-her);
+    line-height:1.35;
+    max-height:220px;
+    overflow-y:auto;
+    outline:none;
+  }
+  .inline-quill::placeholder{
+    color:var(--ink-her);
+    opacity:0.4;
+    font-family:'Caveat', cursive;
+    font-size:22px;
+  }
+  .inline-send{
+    border:none;
+    background:transparent;
+    color:var(--ink-her);
+    font-family:'Cormorant Garamond', serif;
+    font-variant:small-caps;
+    font-size:13px;
+    letter-spacing:0.08em;
+    cursor:pointer;
+    padding:6px 4px 9px;
+    opacity:0.5;
+    flex-shrink:0;
+    transition:opacity 0.2s ease;
+  }
+  .inline-send:hover, .inline-send:focus-visible{ opacity:0.9; }
+  .inline-send:focus-visible{ outline:2px solid var(--gold-bright); outline-offset:2px; }
+
+  /* the hidden clasp */
+  .clasp{
+    position:absolute;
+    bottom:10px;
+    right:14px;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #d9bd85, #8a6d3a 70%, #5e4720);
+    border:none;
+    opacity:0.5;
+    cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,0.5);
+    transition:opacity 0.2s ease, transform 0.2s ease;
+  }
+  .clasp:hover, .clasp:focus-visible{ opacity:0.9; transform:scale(1.08); }
+  .clasp:focus-visible{ outline:2px solid var(--gold-bright); outline-offset:3px; }
+
+  /* ---------- pin modal ---------- */
+  #pinOverlay{
+    position:fixed; inset:0;
+    background:rgba(10,8,6,0.72);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+  }
+  #pinOverlay.active{ display:flex; }
+  .pin-card{
+    background:linear-gradient(160deg, var(--leather-light), var(--leather-dark));
+    border:1px solid var(--gold);
+    border-radius:8px;
+    padding:26px 24px;
+    width:260px;
+    text-align:center;
+    box-shadow:0 20px 50px rgba(0,0,0,0.6);
+  }
+  .pin-card.shake{ animation:shake 0.4s ease; }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-6px); }
+    75%{ transform:translateX(6px); }
+  }
+  .pin-title{
+    color:var(--gold-bright);
+    font-family:'Cormorant Garamond', serif;
+    font-variant:small-caps;
+    letter-spacing:0.15em;
+    font-size:15px;
+    margin-bottom:14px;
+  }
+  .pin-input{
+    width:100%;
+    text-align:center;
+    letter-spacing:0.5em;
+    font-size:22px;
+    padding:8px 0;
+    background:rgba(0,0,0,0.25);
+    border:1px solid var(--gold);
+    border-radius:4px;
+    color:var(--parchment);
+    outline:none;
+    font-family:'Cormorant Garamond', serif;
+  }
+  .pin-input:focus-visible{ outline:2px solid var(--gold-bright); outline-offset:2px; }
+  .pin-actions{
+    display:flex;
+    justify-content:space-between;
+    margin-top:16px;
+  }
+  .pin-btn{
+    background:none;
+    border:1px solid var(--gold);
+    color:var(--parchment-shadow);
+    border-radius:4px;
+    padding:6px 14px;
+    font-family:'Cormorant Garamond', serif;
+    font-variant:small-caps;
+    letter-spacing:0.06em;
+    cursor:pointer;
+    font-size:13px;
+  }
+  .pin-btn:hover, .pin-btn:focus-visible{ color:var(--gold-bright); border-color:var(--gold-bright); }
+  .pin-btn:focus-visible{ outline:2px solid var(--gold-bright); outline-offset:2px; }
+  .pin-btn.primary{ background:var(--gold); color:#1c150e; border-color:var(--gold); }
+
+  /* ---------- tom desk view ---------- */
+  #tomScreen{ padding:18px; }
+  .desk-frame{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    background:linear-gradient(160deg, #21150f, #0f0b08);
+    border-radius:8px;
+    border:1px solid rgba(183,150,90,0.25);
+    padding:14px;
+    overflow:hidden;
+  }
+  .desk-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:4px 6px 12px;
+    border-bottom:1px solid rgba(183,150,90,0.25);
+  }
+  .desk-title{
+    color:var(--gold-bright);
+    font-family:'Cormorant Garamond', serif;
+    font-variant:small-caps;
+    letter-spacing:0.15em;
+    font-size:14px;
+  }
+  .sync-status{
+    font-size:11px;
+    color:var(--parchment-shadow);
+    opacity:0.75;
+    margin-top:3px;
+    letter-spacing:0.03em;
+  }
+  .leave-link{
+    background:none;
+    border:none;
+    color:var(--parchment-shadow);
+    font-size:13px;
+    cursor:pointer;
+    opacity:0.7;
+    font-family:'Cormorant Garamond', serif;
+  }
+  .leave-link:hover, .leave-link:focus-visible{ opacity:1; }
+  .desk-entries{
+    flex:1;
+    overflow-y:auto;
+    padding:14px 8px;
+  }
+  .desk-entry{
+    margin-bottom:14px;
+    font-size:16px;
+    line-height:1.4;
+    padding:10px 12px;
+    border-radius:6px;
+    max-width:85%;
+  }
+  .desk-entry.her{
+    background:rgba(236,224,194,0.08);
+    color:var(--parchment);
+    margin-right:auto;
+  }
+  .desk-entry.tom{
+    background:rgba(30,74,53,0.25);
+    color:#bfe3cf;
+    margin-left:auto;
+    text-align:right;
+  }
+  .desk-empty{
+    color:var(--parchment-shadow);
+    opacity:0.5;
+    text-align:center;
+    margin-top:20%;
+    font-size:14px;
+  }
+  .desk-input-row{
+    display:flex;
+    gap:8px;
+    padding:10px 6px 4px;
+    border-top:1px solid rgba(183,150,90,0.25);
+  }
+  .desk-textarea{
+    flex:1;
+    resize:none;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(183,150,90,0.3);
+    border-radius:6px;
+    color:var(--parchment);
+    font-family:'Cormorant Garamond', serif;
+    font-size:16px;
+    padding:8px 10px;
+    outline:none;
+    max-height:90px;
+  }
+  .desk-textarea:focus-visible{ outline:2px solid var(--gold-bright); }
+  .desk-send{
+    border:1px solid var(--gold);
+    background:var(--gold);
+    color:#1c150e;
+    border-radius:6px;
+    padding:0 16px;
+    font-family:'Cormorant Garamond', serif;
+    font-variant:small-caps;
+    letter-spacing:0.05em;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .desk-send:hover, .desk-send:focus-visible{ background:var(--gold-bright); }
+  .desk-send:disabled{ opacity:0.4; cursor:default; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <!-- COVER -->
+  <div id="coverScreen" class="screen active">
+    <div class="cover-panel">
+      <div>
+        <div class="cover-title">T. M. RIDDLE</div>
+        <span class="cover-sub">a diary</span>
+      </div>
+      <div class="cover-hint">tap to open</div>
+    </div>
+  </div>
+
+  <!-- DIARY VIEW -->
+  <div id="diaryScreen" class="screen">
+    <div class="frame">
+      <div class="page">
+        <svg class="page-grain" width="0" height="0">
+          <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+        </svg>
+        <div class="page-header">this page remembers</div>
+        <div class="entries" id="entriesEl">
+          <div class="inline-input-wrap" id="inlineInputWrap">
+            <textarea id="herInput" class="inline-quill" rows="1" maxlength="600" placeholder="The page is blank. Write the first word..." aria-label="Write on the page"></textarea>
+            <button class="inline-send" id="herSend" aria-label="Write into the diary">write</button>
+          </div>
+        </div>
+        <div class="waiting" id="waitingEl">· · · the page seems to stir · · ·</div>
+      </div>
+      <button class="clasp" id="claspBtn" aria-label=""></button>
+    </div>
+  </div>
+
+  <!-- TOM DESK VIEW -->
+  <div id="tomScreen" class="screen">
+    <div class="desk-frame">
+      <div class="desk-header">
+        <div>
+          <span class="desk-title">the other side of the page</span>
+          <div class="sync-status" id="syncStatus">checking sync...</div>
+        </div>
+        <button class="leave-link" id="leaveDesk">close</button>
+      </div>
+      <div class="desk-entries" id="deskEntriesEl">
+        <div class="desk-empty">Nothing written yet.</div>
+      </div>
+      <div class="desk-input-row">
+        <textarea id="tomInput" class="desk-textarea" rows="1" placeholder="write back as the diary..." maxlength="600"></textarea>
+        <button class="desk-send" id="tomSend">Seal &amp; send</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- PIN OVERLAY -->
+<div id="pinOverlay">
+  <div class="pin-card" id="pinCard">
+    <div class="pin-title">the clasp is locked</div>
+    <input id="pinInput" class="pin-input" type="password" inputmode="numeric" maxlength="4" autocomplete="off" />
+    <div class="pin-actions">
+      <button class="pin-btn" id="pinCancel">cancel</button>
+      <button class="pin-btn primary" id="pinSubmit">open</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Portfolio copy: entries live only in this visitor's browser (no server).
+  const TOM_PIN = '0000'; // portfolio demo PIN (shown to visitors)
+
+  const STORE_KEY = 'diary_entries_demo';
+  function readStore(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }catch(e){ return memStore; } }
+  function writeStore(rows){ memStore = rows; try{ localStorage.setItem(STORE_KEY, JSON.stringify(rows)); }catch(e){} }
+  let memStore = [];
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const coverScreen = document.getElementById('coverScreen');
+  const diaryScreen = document.getElementById('diaryScreen');
+  const tomScreen = document.getElementById('tomScreen');
+  const entriesEl = document.getElementById('entriesEl');
+  const inlineInputWrap = document.getElementById('inlineInputWrap');
+  const waitingEl = document.getElementById('waitingEl');
+  const herInput = document.getElementById('herInput');
+  const herSend = document.getElementById('herSend');
+  const claspBtn = document.getElementById('claspBtn');
+  const pinOverlay = document.getElementById('pinOverlay');
+  const pinCard = document.getElementById('pinCard');
+  const pinInput = document.getElementById('pinInput');
+  const pinSubmit = document.getElementById('pinSubmit');
+  const pinCancel = document.getElementById('pinCancel');
+  const deskEntriesEl = document.getElementById('deskEntriesEl');
+  const tomInput = document.getElementById('tomInput');
+  const tomSend = document.getElementById('tomSend');
+  const leaveDesk = document.getElementById('leaveDesk');
+
+  let entries = [];
+  let seenIds = new Set();
+  let pollTimer = null;
+  let currentView = 'cover';
+  let storageAvailable = null;
+  const syncStatusEl = document.getElementById('syncStatus');
+
+  function makeId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  function updateSyncStatus(){
+    if(!syncStatusEl) return;
+    if(storageAvailable === null){ syncStatusEl.textContent = 'checking sync...'; }
+    else if(storageAvailable){ syncStatusEl.textContent = 'demo: saved in this browser only'; syncStatusEl.style.color = '#7fae94'; }
+    else { syncStatusEl.textContent = 'storage unavailable'; syncStatusEl.style.color = '#c98a72'; }
+  }
+
+  async function checkStorage(){
+    storageAvailable = true;
+    updateSyncStatus();
+    if(syncStatusEl) syncStatusEl.textContent = 'demo: saved in this browser only';
+  }
+
+  async function loadEntries(){
+    return readStore().map(row => ({ id: row.id, sender: row.sender, text: row.content, ts: row.ts }));
+  }
+
+  async function insertEntry(entry){
+    const rows = readStore();
+    rows.push({ id: entry.id, sender: entry.sender, content: entry.text, ts: Date.now() });
+    writeStore(rows);
+    return true;
+  }
+
+  function typeWriter(el, text, speed){
+    el.textContent = '';
+    if(reduceMotion){ el.textContent = text; return Promise.resolve(); }
+    let i = 0;
+    return new Promise(resolve=>{
+      const iv = setInterval(()=>{
+        el.textContent += text[i];
+        i++;
+        if(i >= text.length){ clearInterval(iv); resolve(); }
+      }, speed || 30);
+    });
+  }
+
+  function renderDiary(list, animateTomIds){
+    herInput.placeholder = list.length ? '' : 'The page is blank. Write the first word...';
+    entriesEl.querySelectorAll('.entry').forEach(n=>n.remove());
+    list.forEach(entry=>{
+      const div = document.createElement('div');
+      div.className = 'entry ' + (entry.sender === 'tom' ? 'tom' : 'her');
+      entriesEl.insertBefore(div, inlineInputWrap);
+      if(entry.sender === 'tom' && animateTomIds && animateTomIds.includes(entry.id)){
+        typeWriter(div, entry.text, 26);
+      } else {
+        div.textContent = entry.text;
+      }
+    });
+    entriesEl.scrollTop = entriesEl.scrollHeight;
+    updateWaiting(list);
+  }
+
+  function updateWaiting(list){
+    const last = list[list.length - 1];
+    if(last && last.sender === 'her'){
+      waitingEl.classList.add('show');
+    } else {
+      waitingEl.classList.remove('show');
+    }
+  }
+
+  function renderDesk(list){
+    deskEntriesEl.querySelectorAll('.desk-entry, .desk-empty').forEach(n=>n.remove());
+    if(!list.length){
+      const p = document.createElement('div');
+      p.className = 'desk-empty';
+      p.textContent = 'Nothing written yet.';
+      deskEntriesEl.appendChild(p);
+      return;
+    }
+    list.forEach(entry=>{
+      const div = document.createElement('div');
+      div.className = 'desk-entry ' + (entry.sender === 'tom' ? 'tom' : 'her');
+      div.textContent = entry.text;
+      deskEntriesEl.appendChild(div);
+    });
+    deskEntriesEl.scrollTop = deskEntriesEl.scrollHeight;
+  }
+
+  function handleIncoming(row){
+    const entry = {
+      id: row.id,
+      sender: row.sender,
+      text: row.content,
+      ts: new Date(row.created_at).getTime()
+    };
+    if(seenIds.has(entry.id)) return;
+    entries.push(entry);
+    entries.sort((a,b)=>a.ts - b.ts);
+    seenIds.add(entry.id);
+    if(currentView === 'diary'){
+      renderDiary(entries, entry.sender === 'tom' ? [entry.id] : []);
+    } else if(currentView === 'tom'){
+      renderDesk(entries);
+    }
+  }
+
+  function subscribeRealtime(){
+    // Demo: other tabs of this browser share the same diary through localStorage.
+    addEventListener('storage', e => {
+      if(e.key !== STORE_KEY) return;
+      readStore().forEach(r => handleIncoming({ id: r.id, sender: r.sender, content: r.content, created_at: new Date(r.ts).toISOString() }));
+    });
+  }
+
+  // safety net in case a realtime event is ever missed (dropped connection, etc.)
+  function startFallbackPolling(){
+    if(pollTimer) return;
+    pollTimer = setInterval(async ()=>{
+      const remote = await loadEntries();
+      remote.forEach(r => {
+        if(!seenIds.has(r.id)){
+          handleIncoming({ id: r.id, sender: r.sender, content: r.text, created_at: new Date(r.ts).toISOString() });
+        }
+      });
+    }, 15000);
+  }
+
+  function autoGrow(el, max){
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, max || 90) + 'px';
+  }
+  herInput.addEventListener('input', ()=>autoGrow(herInput, 220));
+  tomInput.addEventListener('input', ()=>autoGrow(tomInput, 90));
+
+  async function submitHer(){
+    const text = herInput.value.trim();
+    if(!text) return;
+    const entry = { id: makeId(), sender: 'her', text: text, ts: Date.now() };
+    entries.push(entry);
+    seenIds.add(entry.id);
+    herInput.value = '';
+    autoGrow(herInput, 220);
+    renderDiary(entries, []);
+    herInput.focus();
+    await insertEntry(entry);
+  }
+
+  async function submitTom(){
+    const text = tomInput.value.trim();
+    if(!text) return;
+    const entry = { id: makeId(), sender: 'tom', text: text, ts: Date.now() };
+    entries.push(entry);
+    seenIds.add(entry.id);
+    tomInput.value = '';
+    autoGrow(tomInput);
+    renderDesk(entries);
+    await insertEntry(entry);
+  }
+
+  herSend.addEventListener('click', submitHer);
+  herInput.addEventListener('keydown', e=>{
+    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); submitHer(); }
+  });
+  tomSend.addEventListener('click', submitTom);
+  tomInput.addEventListener('keydown', e=>{
+    if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); submitTom(); }
+  });
+
+  async function openDiary(){
+    coverScreen.classList.remove('active');
+    diaryScreen.classList.add('active');
+    currentView = 'diary';
+    entries = await loadEntries();
+    entries.forEach(e=>seenIds.add(e.id));
+    renderDiary(entries, []);
+    startFallbackPolling();
+    herInput.focus();
+  }
+  coverScreen.addEventListener('click', openDiary);
+  coverScreen.addEventListener('keydown', e=>{
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openDiary(); }
+  });
+  coverScreen.tabIndex = 0;
+
+  function openPin(){
+    pinOverlay.classList.add('active');
+    pinInput.value = '';
+    pinInput.focus();
+  }
+  function closePin(){
+    pinOverlay.classList.remove('active');
+  }
+  claspBtn.addEventListener('click', openPin);
+  pinCancel.addEventListener('click', closePin);
+  pinOverlay.addEventListener('click', e=>{ if(e.target === pinOverlay) closePin(); });
+
+  async function checkPin(){
+    if(pinInput.value === TOM_PIN){
+      closePin();
+      diaryScreen.classList.remove('active');
+      tomScreen.classList.add('active');
+      currentView = 'tom';
+      entries = await loadEntries();
+      entries.forEach(e=>seenIds.add(e.id));
+      renderDesk(entries);
+      updateSyncStatus();
+    } else {
+      pinCard.classList.remove('shake');
+      void pinCard.offsetWidth;
+      pinCard.classList.add('shake');
+      pinInput.value = '';
+    }
+  }
+  pinSubmit.addEventListener('click', checkPin);
+  pinInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') checkPin(); });
+
+  leaveDesk.addEventListener('click', ()=>{
+    tomScreen.classList.remove('active');
+    diaryScreen.classList.add('active');
+    currentView = 'diary';
+    renderDiary(entries, []);
+  });
+
+  checkStorage();
+  subscribeRealtime();
+})();
+</script>
+</body>
+</html>

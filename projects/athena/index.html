@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Athena: graph ask</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --panel: #11151c;
+    --edge: #26313f;
+    --ink: #d4f2dd;
+    --dim: #6b7a8c;
+    --amber: #ffb547;
+    --cyan: #58e1ff;
+    --magenta: #ff6fc4;
+    --lime: #a6ff5c;
+    --paper: #c9c5ff;
+    --pixel: "Press Start 2P", monospace;
+    --term: "VT323", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 19px/1.2 var(--term);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  .app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px 8px;
+  }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  h1 {
+    margin: 0;
+    font: 12px/1.4 var(--pixel);
+    color: var(--amber);
+    letter-spacing: .02em;
+    white-space: nowrap;
+  }
+  h1 span { color: var(--dim); font-size: 9px; margin-left: 8px; }
+  .tag { color: var(--dim); font-size: 16px; white-space: nowrap; }
+
+  .ask { display: flex; gap: 6px; }
+  .ask input {
+    flex: 1;
+    min-width: 0;
+    background: var(--panel);
+    border: 2px solid var(--edge);
+    padding: 4px 8px;
+    font-size: 20px;
+    outline: none;
+  }
+  .ask input:focus { border-color: var(--cyan); }
+  .btn {
+    background: var(--panel);
+    border: 2px solid var(--edge);
+    padding: 3px 10px;
+    font: 9px/1.6 var(--pixel);
+    color: var(--ink);
+  }
+  .btn:hover, .btn:focus-visible { border-color: var(--amber); outline: none; }
+  .btn.primary { border-color: var(--amber); color: var(--amber); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip {
+    background: transparent;
+    border: 1px dashed var(--edge);
+    padding: 1px 7px;
+    font-size: 17px;
+    color: var(--ink);
+    text-align: left;
+  }
+  .chip:hover, .chip:focus-visible { border-color: var(--cyan); color: var(--cyan); outline: none; }
+  .chip.follow { border-color: var(--lime); color: var(--lime); }
+
+  .stage {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(150px, 1.15fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 2px solid var(--edge);
+    min-height: 0;
+    position: relative;
+  }
+
+  .graph-panel { overflow: hidden; }
+  #graph { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+  .info {
+    position: absolute;
+    left: 8px;
+    top: 6px;
+    right: 8px;
+    font-size: 17px;
+    color: var(--dim);
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .info b { color: var(--ink); font-weight: normal; }
+  .legend {
+    position: absolute;
+    left: 8px;
+    bottom: 4px;
+    font-size: 16px;
+    color: var(--dim);
+    pointer-events: none;
+  }
+  .legend i { font-style: normal; }
+  .lg-person { color: var(--cyan); }
+  .lg-org { color: var(--magenta); }
+  .lg-project { color: var(--amber); }
+  .lg-commit { color: var(--lime); }
+  .lg-note { color: var(--paper); }
+
+  /* graph */
+  .node { opacity: .42; transition: opacity .35s; }
+  .node.lit { opacity: 1; }
+  .node.dim { opacity: .14; }
+  .node path { fill: var(--bg); stroke: currentColor; stroke-width: 2; transition: fill .35s, stroke-width .2s; }
+  .node.lit path { fill-opacity: 1; fill: color-mix(in srgb, currentColor 22%, var(--bg)); }
+  .node.focus path { stroke-width: 5; }
+  .node.cited path { animation: pulse .9s ease-in-out infinite alternate; }
+  .node text { fill: var(--ink); font-size: 16px; text-anchor: middle; pointer-events: none; }
+  .node.dim text { opacity: .3; }
+  .node.k-Person { color: var(--cyan); }
+  .node.k-Org { color: var(--magenta); }
+  .node.k-Project { color: var(--amber); }
+  .node.k-Commit { color: var(--lime); }
+  .node.k-Note { color: var(--paper); }
+  .node.k-Note path { stroke-dasharray: 3 2; }
+  @keyframes pulse { from { stroke-width: 2; } to { stroke-width: 5; } }
+
+  line.fact { stroke: #2d3a4a; stroke-width: 1.6; opacity: .6; transition: opacity .35s, stroke .35s; }
+  line.fact.lit { stroke: var(--amber); stroke-width: 2.6; opacity: 1; }
+  line.fact.dim { opacity: .1; }
+  line.clink, line.nlink { stroke: var(--dim); stroke-width: 1.2; stroke-dasharray: 2 3; opacity: 0; transition: opacity .35s; }
+  line.clink.on, line.nlink.on { opacity: .9; }
+  text.flabel { fill: var(--amber); font-size: 15px; text-anchor: middle; opacity: 0; transition: opacity .35s; pointer-events: none; }
+  text.flabel.on { opacity: 1; }
+  circle.dot { fill: #fff; }
+
+  /* log */
+  .log { overflow-y: auto; padding: 8px 10px 10px; font-size: 18px; }
+  .hint { color: var(--dim); margin: 0 0 6px; }
+  .step { color: var(--ink); white-space: pre-wrap; }
+  .step.done { color: var(--dim); }
+  .step.now::after { content: "_"; animation: blink 1s steps(2, start) infinite; color: var(--cyan); }
+  .step .ok { color: var(--lime); }
+  @keyframes blink { to { visibility: hidden; } }
+
+  .records { margin: 6px 0 0; padding: 0; list-style: none; font-size: 16px; color: var(--dim); }
+  .records li { padding: 1px 0; cursor: pointer; }
+  .records li:hover, .records li.focus { color: var(--ink); }
+  .records b { color: var(--amber); font-weight: normal; }
+  .records .t-commit b { color: var(--lime); }
+  .records .t-entity b { color: var(--cyan); }
+  .records .t-note b { color: var(--paper); }
+  .records .t-gh b { color: var(--magenta); }
+
+  .answer { margin-top: 8px; font-size: 22px; line-height: 1.22; color: #eafff0; min-height: 1em; }
+  .cite {
+    color: var(--amber);
+    font-size: 17px;
+    cursor: pointer;
+    padding: 0 1px;
+  }
+  .cite:hover, .cite:focus-visible { text-decoration: underline; outline: none; }
+  .answer-note { color: var(--dim); font-size: 17px; margin-top: 6px; }
+  .followups { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .followups:empty { display: none; }
+
+  .foot { font-size: 15px; color: var(--dim); line-height: 1.1; }
+
+  @media (min-width: 880px) {
+    .stage { grid-template-rows: minmax(0, 1fr); grid-template-columns: 1.15fr 1fr; }
+    h1 { font-size: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .node, line.fact, .panel * { transition: none !important; }
+    .node.cited path, .step.now::after { animation: none; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <h1>ATHENA<span>graph ask</span></h1>
+    <span class="tag">fictional data</span>
+  </header>
+
+  <form class="ask" id="form" autocomplete="off">
+    <input id="q" type="text" maxlength="140" placeholder="Ask the graph anything..." aria-label="Ask the graph">
+    <button class="btn primary" type="submit">ASK</button>
+    <button class="btn" type="button" id="replay" title="Run the last question again">REPLAY</button>
+  </form>
+
+  <div class="chips" id="chips"></div>
+
+  <section class="stage">
+    <div class="panel graph-panel" id="graphPanel">
+      <svg id="graph" role="img" aria-label="Knowledge graph of people, projects, commitments and notes"></svg>
+      <div class="info" id="info">Drag nodes. Tap one to inspect it.</div>
+      <div class="legend">
+        <i class="lg-person">o person</i> &nbsp;<i class="lg-org">[] org</i> &nbsp;<i class="lg-project">[] project</i> &nbsp;<i class="lg-commit">&lt;&gt; commit</i> &nbsp;<i class="lg-note">[] note</i>
+      </div>
+    </div>
+
+    <div class="panel log" id="log" aria-live="polite">
+      <p class="hint">Pick a question. Each step below is a stage of the real ask pipeline: search, open commitments, entities, GitHub, source notes, then a cited answer.</p>
+      <div id="steps"></div>
+      <ol class="records" id="records"></ol>
+      <div class="answer" id="answer"></div>
+      <div class="followups" id="followups"></div>
+    </div>
+  </section>
+
+  <footer class="foot">Runs in your browser. Keyword overlap stands in for the embedding and BM25 search the real system uses over Neo4j.</footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  /* ------------------------------------------------------------------
+     Fictional personal graph. Nothing here is real.
+     Shapes mirror the real schema: entities, commitments (open loops),
+     facts (edges with sources), and notes (the episode log).
+     ------------------------------------------------------------------ */
+
+  const ENTITIES = [
+    { id: 'sam', name: 'Sam', kind: 'Person', summary: 'Me, the one asking', aliases: [], fields: { role: 'me' } },
+    { id: 'lena', name: 'Lena', kind: 'Person', summary: 'Print contact', aliases: ['lena'], fields: { works_at: 'Northwind Print' } },
+    { id: 'mira', name: 'Mira', kind: 'Person', summary: 'Designer', aliases: ['mira'], fields: { role: 'designer' } },
+    { id: 'jonas', name: 'Jonas', kind: 'Person', summary: 'Engineer', aliases: ['jonas'], fields: { role: 'engineer' } },
+    { id: 'tomas', name: 'Tomas', kind: 'Person', summary: 'Engineer', aliases: ['tomas'], fields: { role: 'engineer' } },
+    { id: 'northwind', name: 'Northwind Print', kind: 'Org', summary: 'Vendor', aliases: ['northwind'], fields: { kind: 'vendor' } },
+    { id: 'harbor', name: 'Harbor Labs', kind: 'Org', summary: 'Client', aliases: ['harbor'], fields: { kind: 'client' } },
+    { id: 'lighthouse', name: 'Lighthouse redesign', kind: 'Project', summary: 'Active', aliases: ['lighthouse'], fields: { status: 'active' } },
+    { id: 'ledger', name: 'Ledger migration', kind: 'Project', summary: 'In build', aliases: ['ledger'], fields: { repo: 'ledger-migration' } },
+  ];
+  const ENT = Object.fromEntries(ENTITIES.map(e => [e.id, e]));
+
+  const FACTS = [
+    { id: 'f1', s: 'lena', t: 'northwind', label: 'works at', text: 'Lena works at Northwind Print', sources: ['n_thread'] },
+    { id: 'f2', s: 'lena', t: 'lighthouse', label: 'contact for', text: 'Lena is the contact for the Lighthouse print run', sources: ['n_call', 'n_thread'] },
+    { id: 'f3', s: 'northwind', t: 'lighthouse', label: 'prints', text: 'Northwind Print prints the Lighthouse catalogue', sources: ['n_thread'] },
+    { id: 'f4', s: 'mira', t: 'lighthouse', label: 'designs', text: 'Mira designs the Lighthouse redesign', sources: ['n_standup'] },
+    { id: 'f5', s: 'harbor', t: 'lighthouse', label: 'client of', text: 'Harbor Labs is the client for Lighthouse', sources: ['n_call'] },
+    { id: 'f6', s: 'jonas', t: 'ledger', label: 'leads', text: 'Jonas leads the Ledger migration', sources: ['n_standup'] },
+    { id: 'f7', s: 'tomas', t: 'ledger', label: 'reviews', text: 'Tomas reviews the Ledger migration', sources: ['n_standup'] },
+  ];
+
+  // direction is from the asker's side: I_OWE (owner is Sam) or OWED_TO_ME (someone owes Sam)
+  const COMMITS = [
+    { id: 'c_lease', text: 'Send lease draft to Lena', owner: 'sam', party: 'lena', with: 'Lena', direction: 'I_OWE', due: '2026-11-06', source: 'n_call' },
+    { id: 'c_signoff', text: 'Sign off the print-run proof', owner: 'lena', party: 'sam', with: 'Lena', direction: 'OWED_TO_ME', due: '2026-10-20', source: 'n_thread' },
+    { id: 'c_copy', text: 'Send onboarding copy for Harbor Labs', owner: 'mira', party: 'sam', with: 'Mira', direction: 'OWED_TO_ME', due: '2026-11-09', source: 'n_standup' },
+  ];
+
+  const NOTES = {
+    n_call: { id: 'n_call', label: 'Call notes', date: '2026-10-03', text: 'Lena asked for the lease draft by Friday. Harbor Labs confirmed the onboarding date.', links: ['lena', 'harbor'] },
+    n_standup: { id: 'n_standup', label: 'Standup', date: '2026-10-20', text: 'Mira will send the onboarding copy once the hero shots land. Jonas leads the Ledger migration and Tomas reviews it.', links: ['mira', 'jonas', 'tomas'] },
+    n_thread: { id: 'n_thread', label: 'Print-run thread', date: '2026-10-14', text: 'Northwind Print confirmed the catalogue run. Lena to sign off the proof by 2026-10-20.', links: ['northwind', 'lena'] },
+  };
+
+  // GitHub issues, read only for entities that carry a repo field (as in the real pipeline).
+  const ISSUES = {
+    ledger: { ref: 'ledger-migration#42', title: 'Replay job stalls on large batches', idle: 61 },
+  };
+
+  const FACT_LIMIT = 6;
+  const NOTE_LIMIT = 5;
+  const FIRST_PERSON = /\b(i|me|my|mine|myself)\b/i;
+  const STOP = new Set(['what', 'who', 'the', 'and', 'did', 'does', 'for', 'with', 'are', 'was', 'were',
+    'is', 'still', 'open', 'her', 'his', 'she', 'him', 'they', 'them', 'that', 'this', 'about', 'from',
+    'you', 'your', 'have', 'has', 'any', 'how', 'why', 'when', 'which', 'all', 'can', 'not', 'but', 'of',
+    'to', 'in', 'on', 'at', 'an', 'its', 'own', 'off', 'promise', 'who']);
+
+  const SAMPLES = [
+    {
+      id: 'q1', q: 'Who is Lena and what do I owe her?', followUps: ['What about her sign-off?'],
+      answer: 'Lena is the Northwind Print contact for the Lighthouse print run {{f1}}{{f2}}. You owe her the lease draft, due 2026-11-06 {{c_lease}}. She owes you the print-run sign-off, due 2026-10-20 {{c_signoff}}.',
+    },
+    {
+      id: 'q2', q: 'What is still open with Northwind Print?',
+      answer: 'Northwind Print prints the Lighthouse catalogue {{f3}}, and Lena works there {{f1}}. Two loops are open with Lena: she owes you the print-run sign-off, due 2026-10-20 {{c_signoff}}, and you owe her the lease draft, due 2026-11-06 {{c_lease}}.',
+    },
+    {
+      id: 'q3', q: 'What did Mira promise for Lighthouse?',
+      answer: 'Mira owes you the onboarding copy for Harbor Labs, due 2026-11-09 {{c_copy}}. Standup notes say she will send it once the hero shots land {{n_standup}}. She is designing the Lighthouse redesign {{f4}}.',
+    },
+    {
+      id: 'q4', q: 'Who leads the Ledger migration?',
+      answer: 'Jonas leads the Ledger migration {{f6}}, and Tomas reviews it {{f7}}. The repo has one open issue, ledger-migration#42, idle 61 days {{gh_ledger}}.',
+    },
+    {
+      id: 'q1b', q: 'What about her sign-off?', hidden: true,
+      rewrite: "What about Lena's print-run sign-off?",
+      answer: 'Lena owes you the print-run sign-off, due 2026-10-20 {{c_signoff}}. The print-run thread has her signing it off by that date {{n_thread}}.',
+    },
+  ];
+
+  /* ------------------------------------------------------------------
+     Retrieval. Seeds are entities named in the question (plus the asker
+     on first-person questions). Facts touch a seed or share a word.
+     Commitments hang off one hop from the seeds. Notes are the sources
+     of the facts found.
+     ------------------------------------------------------------------ */
+
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const tokens = text => (text.toLowerCase().match(/[a-z][a-z-]+/g) || []).filter(w => w.length >= 3 && !STOP.has(w));
+
+  function entitiesIn(question) {
+    const lower = question.toLowerCase();
+    return ENTITIES.filter(e => e.aliases.some(a => new RegExp('\\b' + esc(a) + '\\b').test(lower))).map(e => e.id);
+  }
+
+  function retrieve(question) {
+    const words = new Set(tokens(question));
+    const seeds = entitiesIn(question);
+    if (FIRST_PERSON.test(question) && !seeds.includes('sam')) seeds.push('sam');
+
+    const facts = FACTS
+      .filter(f => seeds.includes(f.s) || seeds.includes(f.t) || tokens(f.text).some(w => words.has(w)))
+      .slice(0, FACT_LIMIT);
+
+    // one hop out from the seeds, through the facts found. The asker is not expanded,
+    // or every open loop with them would come back on every question.
+    const reach = new Set(seeds.filter(s => s !== 'sam'));
+    facts.forEach(f => { reach.add(f.s); reach.add(f.t); });
+    reach.delete('sam');
+    const commits = COMMITS.filter(c => reach.has(c.owner) || reach.has(c.party));
+
+    const issues = seeds.filter(s => ISSUES[s]);
+    const notes = [...new Set(facts.flatMap(f => f.sources))].slice(0, NOTE_LIMIT);
+
+    const records = [
+      ...facts.map(f => ({ id: f.id, type: 'fact', obj: f })),
+      ...commits.map(c => ({ id: c.id, type: 'commit', obj: c })),
+      ...seeds.map(s => ({ id: s, type: 'entity', obj: ENT[s] })),
+      ...issues.map(s => ({ id: 'gh_' + s, type: 'gh', obj: ISSUES[s] })),
+      ...notes.map(n => ({ id: n, type: 'note', obj: NOTES[n] })),
+    ];
+    return { seeds, facts, commits, issues, notes, records, reach };
+  }
+
+  function recordLine(r) {
+    const o = r.obj;
+    switch (r.type) {
+      case 'fact': return `${o.text}  [fact]`;
+      case 'commit': return `${o.text}  [open commitment, ${o.direction}, due ${o.due}, with ${o.with}]`;
+      case 'entity': {
+        const fields = Object.entries(o.fields).map(([k, v]) => `${k}: ${v}`).join('  ');
+        return `${o.name}  [${o.kind.toLowerCase()}]  ${o.summary}  ${fields}`;
+      }
+      case 'gh': return `${o.ref}  ${o.title}  [open issue, idle ${o.idle} days]`;
+      case 'note': return `${o.text}  [note, ${o.date}]`;
+    }
+    return '';
+  }
+
+  // "{{id}}" becomes a numbered citation when that record was retrieved; otherwise it is dropped.
+  function segments(template, records) {
+    return template.split(/(\{\{[a-z0-9_]+\}\})/).flatMap(part => {
+      const m = part.match(/^\{\{([a-z0-9_]+)\}\}$/);
+      if (!m) return part ? [{ text: part }] : [];
+      const index = records.findIndex(r => r.id === m[1]);
+      return index >= 0 ? [{ cite: index + 1, id: m[1] }] : [];
+    });
+  }
+
+  /* ------------------------------------------------------------------
+     Graph
+     ------------------------------------------------------------------ */
+
+  const svg = d3.select('#graph');
+  const panel = document.getElementById('graphPanel');
+  const infoEl = document.getElementById('info');
+  const layerLinks = svg.append('g');
+  const layerNodes = svg.append('g');
+  const layerDots = svg.append('g');
+
+  const SHAPE = { Person: d3.symbolCircle, Org: d3.symbolSquare, Project: d3.symbolSquare, Commit: d3.symbolDiamond, Note: d3.symbolSquare };
+  const SIZE = { Person: 150, Org: 170, Project: 200, Commit: 170, Note: 80 };
+
+  const simNodes = [
+    ...ENTITIES.map(e => ({ id: e.id, kind: e.kind, ref: e, label: e.name })),
+    ...COMMITS.map(c => ({ id: c.id, kind: 'Commit', ref: c, label: c.text.length > 22 ? c.text.slice(0, 21) + '…' : c.text })),
+    ...Object.values(NOTES).map(n => ({ id: n.id, kind: 'Note', ref: n, label: n.label })),
+  ];
+  const byId = new Map(simNodes.map(n => [n.id, n]));
+
+  const simLinks = [
+    ...FACTS.map(f => ({ id: f.id, kind: 'fact', source: f.s, target: f.t })),
+    ...COMMITS.flatMap(c => [
+      { id: c.id + '|' + c.owner, kind: 'clink', source: c.id, target: c.owner },
+      { id: c.id + '|' + c.party, kind: 'clink', source: c.id, target: c.party },
+    ]),
+    ...Object.values(NOTES).flatMap(n => n.links.map(l => ({ id: n.id + '|' + l, kind: 'nlink', source: n.id, target: l }))),
+  ];
+
+  const linkSel = layerLinks.selectAll('line')
+    .data(simLinks).join('line')
+    .attr('class', d => d.kind === 'fact' ? 'fact' : d.kind);
+
+  const flabelSel = layerLinks.selectAll('text.flabel')
+    .data(FACTS).join('text')
+    .attr('class', 'flabel')
+    .text(d => d.label);
+
+  const nodeSel = layerNodes.selectAll('g.node')
+    .data(simNodes).join('g')
+    .attr('class', d => 'node k-' + d.kind);
+  nodeSel.append('path')
+    .attr('d', d => d3.symbol().type(SHAPE[d.kind]).size(SIZE[d.kind])());
+  nodeSel.append('text')
+    .attr('y', d => d.kind === 'Person' ? 19 : 21)
+    .text(d => d.label);
+
+  let width = 640, height = 300;
+  const sim = d3.forceSimulation(simNodes)
+    .force('link', d3.forceLink(simLinks).id(d => d.id)
+      .distance(d => d.kind === 'fact' ? 70 : 42)
+      .strength(d => d.kind === 'fact' ? 0.5 : 0.25))
+    .force('charge', d3.forceManyBody().strength(-160))
+    .force('collide', d3.forceCollide(20))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .on('tick', tick);
+
+  function tick() {
+    const pad = 16;
+    simNodes.forEach(d => {
+      d.x = Math.max(pad, Math.min(width - pad, d.x));
+      d.y = Math.max(pad + 6, Math.min(height - pad - 10, d.y));
+    });
+    linkSel
+      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    flabelSel
+      .attr('x', d => (byId.get(d.s).x + byId.get(d.t).x) / 2)
+      .attr('y', d => (byId.get(d.s).y + byId.get(d.t).y) / 2 - 4);
+    nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+  }
+
+  const drag = d3.drag()
+    .on('start', (event, d) => {
+      if (!event.active) sim.alphaTarget(0.3).restart();
+      d.fx = d.x; d.fy = d.y; d._moved = 0;
+    })
+    .on('drag', (event, d) => {
+      d.fx = event.x; d.fy = event.y;
+      d._moved += Math.abs(event.dx) + Math.abs(event.dy);
+    })
+    .on('end', (event, d) => {
+      if (!event.active) sim.alphaTarget(0);
+      d.fx = null; d.fy = null;
+      if (d._moved < 4) showInfo(d);
+    });
+  nodeSel.call(drag);
+
+  function showInfo(d) {
+    if (d.kind === 'Note') {
+      infoEl.innerHTML = `<b>${d.ref.label}</b>  ${d.ref.date}  ${d.ref.text}`;
+    } else if (d.kind === 'Commit') {
+      infoEl.innerHTML = `<b>${d.ref.text}</b>  ${d.ref.direction}, due ${d.ref.due}`;
+    } else {
+      const fields = Object.entries(d.ref.fields).map(([k, v]) => `${k}: ${v}`).join('  ');
+      infoEl.innerHTML = `<b>${d.ref.name}</b>  ${d.kind.toLowerCase()}  ${d.ref.summary}  ${fields}`;
+    }
+  }
+
+  function resize() {
+    const r = panel.getBoundingClientRect();
+    width = r.width || 640;
+    height = r.height || 300;
+    sim.force('center', d3.forceCenter(width / 2, height / 2));
+    sim.alpha(0.3).restart();
+  }
+  new ResizeObserver(resize).observe(panel);
+
+  // What is lit, cumulatively, over one run.
+  let lit = freshLit(false);
+  function freshLit(active) {
+    return { active, nodes: new Set(), facts: new Set(), links: new Set(), cited: new Set(), focus: null };
+  }
+
+  function paint() {
+    nodeSel
+      .classed('lit', d => lit.nodes.has(d.id))
+      .classed('dim', d => lit.active && !lit.nodes.has(d.id))
+      .classed('cited', d => lit.cited.has(d.id))
+      .classed('focus', d => lit.focus === d.id);
+    linkSel
+      .classed('lit', d => d.kind === 'fact' && lit.facts.has(d.id))
+      .classed('dim', d => d.kind === 'fact' && lit.active && !lit.facts.has(d.id))
+      .classed('on', d => d.kind !== 'fact' && lit.links.has(d.id));
+    flabelSel.classed('on', d => lit.facts.has(d.id));
+  }
+
+  function sendDots(factIds) {
+    factIds.forEach((id, i) => {
+      const f = FACTS.find(x => x.id === id);
+      const s = byId.get(f.s), t = byId.get(f.t);
+      if (s.x == null || t.x == null) return;
+      layerDots.append('circle').attr('r', 3).attr('class', 'dot')
+        .attr('cx', s.x).attr('cy', s.y)
+        .transition().delay(i * 130).duration(520)
+        .attr('cx', t.x).attr('cy', t.y)
+        .remove();
+    });
+  }
+
+  /* ------------------------------------------------------------------
+     The run: each step highlights what it touched, then the answer streams.
+     ------------------------------------------------------------------ */
+
+  const stepsEl = document.getElementById('steps');
+  const recordsEl = document.getElementById('records');
+  const answerEl = document.getElementById('answer');
+  const followEl = document.getElementById('followups');
+  const chipsEl = document.getElementById('chips');
+  const inputEl = document.getElementById('q');
+
+  let runId = 0;
+  let lastRun = null;
+  let lastSampleId = null;
+
+  const wait = ms => new Promise(res => setTimeout(res, ms));
+
+  function addStep(text) {
+    const last = stepsEl.querySelector('.step.now');
+    if (last) { last.classList.remove('now'); last.classList.add('done'); }
+    const el = document.createElement('div');
+    el.className = 'step now';
+    el.textContent = '> ' + text;
+    stepsEl.appendChild(el);
+    return el;
+  }
+
+  function closeSteps() {
+    const last = stepsEl.querySelector('.step.now');
+    if (last) { last.classList.remove('now'); last.classList.add('done'); }
+  }
+
+  function clearLog() {
+    stepsEl.innerHTML = '';
+    recordsEl.innerHTML = '';
+    answerEl.innerHTML = '';
+    followEl.innerHTML = '';
+  }
+
+  function renderRecords(records) {
+    recordsEl.innerHTML = '';
+    records.forEach((r, i) => {
+      const li = document.createElement('li');
+      li.className = 't-' + r.type;
+      li.dataset.id = r.id;
+      const b = document.createElement('b');
+      b.textContent = `[${i + 1}] `;
+      li.appendChild(b);
+      li.appendChild(document.createTextNode(recordLine(r)));
+      li.addEventListener('click', () => focusRecord(r.id));
+      recordsEl.appendChild(li);
+    });
+  }
+
+  function focusRecord(id) {
+    lit.focus = id;
+    paint();
+    setTimeout(() => { if (lit.focus === id) { lit.focus = null; paint(); } }, 1400);
+  }
+
+  async function run(question, sample) {
+    const my = ++runId;
+    const alive = () => my === runId;
+
+    lastRun = { question, sample };
+    clearLog();
+    lit = freshLit(true);
+    paint();
+
+    const search = sample && sample.rewrite ? sample.rewrite : (sample ? sample.q : question);
+    const R = retrieve(search);
+
+    if (sample && sample.rewrite) {
+      addStep(`Reading it as: ${search}`);
+      await wait(700); if (!alive()) return;
+    }
+
+    addStep('Searching the graph');
+    R.seeds.forEach(s => lit.nodes.add(s));
+    R.facts.forEach(f => { lit.facts.add(f.id); lit.nodes.add(f.s); lit.nodes.add(f.t); });
+    paint();
+    sendDots(R.facts.map(f => f.id));
+    await wait(900); if (!alive()) return;
+
+    addStep(`${R.facts.length} fact(s) found — checking open commitments`);
+    R.commits.forEach(c => {
+      lit.nodes.add(c.id);
+      lit.links.add(c.id + '|' + c.owner);
+      lit.links.add(c.id + '|' + c.party);
+    });
+    paint();
+    await wait(800); if (!alive()) return;
+
+    addStep('Reading the entities themselves');
+    R.seeds.forEach(s => lit.nodes.add(s));
+    paint();
+    await wait(700); if (!alive()) return;
+
+    if (R.issues.length) {
+      addStep('Reading GitHub');
+      R.issues.forEach(s => lit.nodes.add(s));
+      paint();
+      await wait(700); if (!alive()) return;
+    }
+
+    if (R.notes.length) {
+      addStep(`Reading ${R.notes.length} source note(s)`);
+      R.notes.forEach(n => {
+        lit.nodes.add(n);
+        Object.values(NOTES).find(x => x.id === n).links.forEach(l => lit.links.add(n + '|' + l));
+      });
+      paint();
+      await wait(800); if (!alive()) return;
+    }
+
+    if (!R.records.length) {
+      addStep('Nothing in the graph touches that yet.');
+      closeSteps();
+      answerEl.textContent = 'Nothing in the graph touches that yet.';
+      return;
+    }
+
+    addStep(`Writing an answer from ${R.records.length} record(s)`);
+    renderRecords(R.records);
+    await wait(500); if (!alive()) return;
+
+    if (!sample) {
+      closeSteps();
+      answerEl.innerHTML = '';
+      const note = document.createElement('div');
+      note.className = 'answer-note';
+      note.textContent = 'This demo writes answers only for its sample questions. The search above ran live on your question.';
+      answerEl.appendChild(note);
+      lastSampleId = null;
+      return;
+    }
+
+    const parts = segments(sample.answer, R.records);
+    const out = document.createElement('span');
+    answerEl.appendChild(out);
+    for (const part of parts) {
+      if (part.cite) {
+        const sup = document.createElement('span');
+        sup.className = 'cite';
+        sup.tabIndex = 0;
+        sup.textContent = `[${part.cite}]`;
+        const rec = R.records[part.cite - 1];
+        sup.addEventListener('click', () => focusRecord(rec.id));
+        out.appendChild(sup);
+        if (rec.type === 'fact') {
+          lit.facts.add(rec.id);
+          lit.cited.add(rec.id);
+        } else {
+          // a GitHub record belongs to the entity it was read from
+          lit.cited.add(rec.type === 'gh' ? rec.id.slice(3) : rec.id);
+        }
+        paint();
+        await wait(160); if (!alive()) return;
+      } else {
+        const chars = [...part.text];
+        for (let i = 0; i < chars.length; i += 2) {
+          out.appendChild(document.createTextNode(chars.slice(i, i + 2).join('')));
+          await wait(16); if (!alive()) return;
+        }
+      }
+    }
+
+    addStep('Checking citations and suggesting follow-ups');
+    await wait(500); if (!alive()) return;
+    closeSteps();
+    lastSampleId = sample.id;
+    if (sample.followUps) {
+      sample.followUps.forEach(text => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip follow';
+        b.textContent = text;
+        b.addEventListener('click', () => runSample(SAMPLES.find(s => s.id === 'q1b')));
+        followEl.appendChild(b);
+      });
+    }
+  }
+
+  function runSample(sample) {
+    inputEl.value = sample.q;
+    run(sample.q, sample);
+  }
+
+  function renderChips() {
+    chipsEl.innerHTML = '';
+    SAMPLES.filter(s => !s.hidden).forEach(s => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.textContent = s.q;
+      b.addEventListener('click', () => runSample(s));
+      chipsEl.appendChild(b);
+    });
+  }
+
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+
+  document.getElementById('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = inputEl.value.trim();
+    if (!text) return;
+    const hit = SAMPLES.find(s => norm(s.q) === norm(text) && (!s.hidden || lastSampleId === 'q1'));
+    if (hit) run(hit.q, hit); else run(text, null);
+  });
+
+  document.getElementById('replay').addEventListener('click', () => {
+    if (lastRun) run(lastRun.question, lastRun.sample);
+  });
+
+  renderChips();
+  // Show the pipeline on load, no run yet.
+  lit = freshLit(false);
+  paint();
+})();
+</script>
+</body>
+</html>

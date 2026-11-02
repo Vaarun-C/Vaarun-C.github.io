@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lookbook Search · visual similarity demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fbfaf6; --bone:#f2efe7; --stone:#d9d2c5; --clay:#7a7166; --ink:#2a2622;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--paper);color:var(--ink);font:13px/1.45 Inter,system-ui,-apple-system,sans-serif;-webkit-text-size-adjust:100%}
+button,input,label{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 16px 22px}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--stone);padding-bottom:10px}
+.brand{font:600 26px/1 "Cormorant Garamond",Georgia,serif;margin:0}
+.eyebrow{font:500 10px/1.2 "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.12em;color:var(--clay);margin:0 0 4px}
+.demo{font:500 10px/1 "JetBrains Mono",monospace;border:1px solid var(--clay);padding:4px 6px;color:var(--clay);white-space:nowrap}
+
+.query{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 6px}
+.query input{flex:1 1 200px;min-width:0;height:36px;padding:0 10px;border:1px solid var(--ink);background:#fff;border-radius:0;outline:none}
+.query input:focus{box-shadow:0 0 0 2px var(--stone)}
+.btn{height:36px;padding:0 12px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);display:inline-flex;align-items:center;justify-content:center;border-radius:0;white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:active{transform:translateY(1px)}
+.examples{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.examples span{font:500 10px "JetBrains Mono",monospace;color:var(--clay);text-transform:uppercase;letter-spacing:.08em;margin-right:2px}
+.chip{height:28px;padding:0 9px;border:1px solid var(--stone);background:transparent;font-size:12px;display:inline-flex;align-items:center;gap:6px;border-radius:0;white-space:nowrap}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip .n{font:10px "JetBrains Mono",monospace;color:var(--clay)}
+.chip[aria-pressed="true"] .n{color:#cfc8ba}
+.chip:disabled{opacity:.4;cursor:default}
+.sw{width:9px;height:9px;border-radius:50%;border:1px solid rgba(0,0,0,.25);display:inline-block;flex:none}
+
+.qbox{display:flex;align-items:center;gap:10px;margin:10px 0 2px;min-height:58px}
+.qthumb{width:56px;height:56px;flex:none;border:1px solid var(--stone);overflow:hidden;background:var(--bone)}
+.qthumb svg,.qthumb img{width:100%;height:100%;display:block;object-fit:cover}
+.qtext{min-width:0}
+.qtext b{display:block;font:600 14px/1.25 "Cormorant Garamond",Georgia,serif;font-size:16px}
+.parsed{font:11px/1.5 "JetBrains Mono",monospace;color:var(--clay);word-break:break-word}
+
+.stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:12px 0 14px}
+.stage{border:1px solid var(--stone);background:var(--bone);padding:8px;min-width:0}
+.stage.flash{animation:flash .6s steps(3)}
+@keyframes flash{50%{border-color:var(--ink);background:#fff}}
+.stage .k{font:500 9px/1.2 "JetBrains Mono",monospace;color:var(--clay);text-transform:uppercase;letter-spacing:.08em}
+.stage b{display:block;font:600 12px/1.25 Inter;margin-top:2px}
+.stage .d{font-size:11px;line-height:1.35;margin-top:4px;word-break:break-word}
+.stage .ms{font:500 10px "JetBrains Mono",monospace;color:var(--clay);margin-top:5px}
+.stage .count{font:600 12px "JetBrains Mono",monospace}
+
+.body{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:720px){.body{grid-template-columns:190px minmax(0,1fr)}}
+.facets{align-self:start}
+.facets h4{margin:0 0 6px;font:500 10px/1.2 "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.1em;color:var(--clay)}
+.facets .grp{border-top:1px solid var(--stone);padding:8px 0 10px}
+.facets .grp:first-child{border-top:0;padding-top:0}
+.facets .chips{display:flex;flex-wrap:wrap;gap:5px}
+.facets .chip{height:24px;padding:0 7px;font-size:11px}
+.facets .clear{margin-top:4px;background:none;border:0;padding:0;text-decoration:underline;font-size:11px;color:var(--clay)}
+
+.resulthead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;font:500 11px "JetBrains Mono",monospace;color:var(--clay)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px}
+.card{border:1px solid var(--stone);background:#fff;padding:0;text-align:left;display:flex;flex-direction:column;min-width:0;border-radius:0}
+.card:hover,.card:focus-visible{border-color:var(--ink);outline:none}
+.card svg{width:100%;height:auto;display:block}
+.card .m{padding:7px 8px 9px;display:grid;gap:2px;min-width:0}
+.card .t{font:600 12px/1.25 Inter;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .b{font-size:11px;color:var(--clay);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .row{display:flex;justify-content:space-between;align-items:center;font:500 11px "JetBrains Mono",monospace;margin-top:3px}
+.bar{height:4px;background:var(--stone);margin-top:4px}
+.bar i{display:block;height:100%;background:var(--ink)}
+.tag{font:500 9px "JetBrains Mono",monospace;color:var(--clay);border:1px solid var(--stone);padding:1px 4px}
+.empty{border:1px dashed var(--clay);padding:20px;text-align:center;color:var(--clay);font-size:12px}
+.foot{margin-top:14px;font:10px/1.5 "JetBrains Mono",monospace;color:var(--clay);border-top:1px solid var(--stone);padding-top:8px}
+
+@media (max-width:480px){
+  .stages{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .query input{flex-basis:100%}
+  .wrap{padding:12px 12px 18px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion:reduce){.stage.flash{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">visual search · in-browser demo</p>
+      <h1 class="brand">Lookbook Search</h1>
+    </div>
+    <span class="demo">DEMO DATA · 24 FICTIONAL ITEMS</span>
+  </header>
+
+  <form class="query" id="qform" autocomplete="off">
+    <input id="qin" type="text" placeholder="Describe it: navy stripe knit, cream dress…" aria-label="Search text">
+    <button class="btn" type="submit">Search</button>
+    <label class="btn ghost" for="file">Upload image</label>
+    <input id="file" type="file" accept="image/*" hidden>
+  </form>
+  <div class="examples" id="examples">
+    <span>try</span>
+    <button class="chip" type="button" data-q="red knit">red knit</button>
+    <button class="chip" type="button" data-q="check jacket">check jacket</button>
+    <button class="chip" type="button" data-q="cream dress">cream dress</button>
+    <button class="chip" type="button" data-q="navy stripe">navy stripe</button>
+  </div>
+
+  <div class="qbox" id="qbox" aria-live="polite"></div>
+  <div class="parsed" id="parsed"></div>
+
+  <section class="stages" id="stages" aria-label="Search pipeline"></section>
+
+  <div class="body">
+    <aside class="facets" id="facets" aria-label="Facet filters"></aside>
+    <main>
+      <div class="resulthead"><span id="rcount"></span><span id="rnote"></span></div>
+      <div class="grid" id="grid"></div>
+    </main>
+  </div>
+
+  <p class="foot">Everything here runs in this page. Each item gets a 24-number vector: colour (14 hue/neutral bins), type (6), pattern (4). Search is cosine similarity over those vectors, then facet filters, then a colour-token rerank and a brand+type dedupe. The real service uses Titan image embeddings and a Typesense vector index; those are not called here. Fictional brands and products only.</p>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- fictional catalogue ----------
+  const COLOR = {red:"#b93a32",pink:"#e7a3b4",mustard:"#d9a53b",yellow:"#f0d35a",green:"#4f7a52",olive:"#6b6e3a",teal:"#2f7f7a",blue:"#3c5f9a",navy:"#1f2f4f",cream:"#f1e6cf",black:"#1d1b1a",grey:"#8a8a8a",brown:"#7a4e2d",white:"#fbfbf8"};
+  const COLOR_ALIAS = {gray:"grey"};
+  const TYPES = ["dress","jacket","knit","sneaker","bag","trouser"];
+  const PATTERNS = ["solid","stripe","check","dot"];
+  const SYN = {sweater:"knit",jumper:"knit",jersey:"knit",shoe:"sneaker",trainer:"sneaker",pants:"trouser",trouser:"trouser",handbag:"bag",tote:"bag",coat:"jacket",blazer:"jacket",gown:"dress",striped:"stripe",checked:"check",plaid:"check",dotted:"dot",polka:"dot",plain:"solid"};
+  const W = [1, 0.7, 0.45]; // block weights: colour, type, pattern
+
+  const RAW = [
+    ["Rib Turtle Knit","Kestrel Row","knit",148,["red","cream"],"solid"],
+    ["Striped Breton Knit","Lumen Tailor","knit",120,["navy","cream"],"stripe"],
+    ["Cable Crew Sweater","Oru Atelier","knit",165,["olive"],"solid"],
+    ["Mock-Neck Merino","Quillon Studio","knit",98,["black"],"solid"],
+    ["Check Wool Jacket","Nightjar Supply","jacket",340,["brown","cream"],"check"],
+    ["Navy Harrington","Lumen Tailor","jacket",265,["navy"],"solid"],
+    ["Cropped Denim Jacket","Oru Atelier","jacket",190,["blue"],"solid"],
+    ["Dotted Shell Jacket","Kestrel Row","jacket",210,["pink","white"],"dot"],
+    ["Bias Slip Dress","Quillon Studio","dress",230,["cream"],"solid"],
+    ["Striped Shirt Dress","Lumen Tailor","dress",198,["blue","white"],"stripe"],
+    ["Checked Wrap Dress","Nightjar Supply","dress",260,["red","black"],"check"],
+    ["Polka Midi Dress","Kestrel Row","dress",180,["red","white"],"dot"],
+    ["Mustard Shift Dress","Oru Atelier","dress",150,["mustard"],"solid"],
+    ["Suede Low-Top Sneaker","Quillon Studio","sneaker",185,["red","white"],"solid"],
+    ["Canvas Court Sneaker","Lumen Tailor","sneaker",95,["white"],"solid"],
+    ["Striped Runner","Oru Atelier","sneaker",140,["navy","white"],"stripe"],
+    ["Forest Trail Sneaker","Nightjar Supply","sneaker",160,["green","black"],"solid"],
+    ["Leather Tote","Kestrel Row","bag",320,["brown"],"solid"],
+    ["Check Mini Bag","Quillon Studio","bag",210,["black","cream"],"check"],
+    ["Dotted Crossbody","Lumen Tailor","bag",128,["pink"],"dot"],
+    ["Teal Canvas Tote","Oru Atelier","bag",88,["teal"],"solid"],
+    ["Pleated Trouser","Nightjar Supply","trouser",175,["grey"],"solid"],
+    ["Striped Wide-Leg","Kestrel Row","trouser",160,["navy","cream"],"stripe"],
+    ["Chino Straight Trouser","Quillon Studio","trouser",120,["olive"],"solid"]
+  ];
+
+  // ---------- vector helpers ----------
+  const zeros = n => new Array(n).fill(0);
+  const unit = v => { const n = Math.hypot(...v) || 1; return v.map(x => x / n); };
+  const cos = (a, b) => { let d = 0, na = 0, nb = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } return na && nb ? d / Math.sqrt(na * nb) : 0; };
+  const hexRgb = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  // 12 hue bins (30 degrees each), plus 2 neutral bins (dark 12, light 13)
+  function colourBin(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    const s = mx ? d / mx : 0;
+    if (s < 0.18) return mx < 0.6 ? 12 : 13;
+    let h = 0;
+    if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+    return Math.floor(h / 30) % 12;
+  }
+  function colourVec(names) {
+    const v = zeros(14);
+    names.forEach(n => { const [r, g, b] = hexRgb(COLOR[n]); v[colourBin(r, g, b)] += 1 / names.length; });
+    return unit(v);
+  }
+  const oneHot = (list, val) => list.map(x => (x === val ? 1 : 0));
+  const concat = (c, t, p) => [...c.map(x => x * W[0]), ...t.map(x => x * W[1]), ...p.map(x => x * W[2])];
+
+  const ITEMS = RAW.map((r, i) => {
+    const [title, brand, type, price, colours, pattern] = r;
+    return { id: "p" + (i + 1), title, brand, type, price, colours, pattern,
+      vec: concat(colourVec(colours), oneHot(TYPES, type), oneHot(PATTERNS, pattern)) };
+  });
+
+  // ---------- thumbnails (drawn SVG, not photos) ----------
+  const SHAPES = {
+    dress: "M40 10 L60 10 L63 32 L76 92 L24 92 L37 32 Z",
+    jacket: "M32 14 L16 28 L22 46 L30 43 L30 90 L70 90 L70 43 L78 46 L84 28 L68 14 L60 12 Q50 24 40 12 Z",
+    knit: "M34 16 L16 30 L8 58 L22 62 L26 46 L26 88 L74 88 L74 46 L78 62 L92 58 L84 30 L66 16 Q50 26 34 16 Z",
+    trouser: "M26 10 L74 10 L78 92 L55 92 L50 42 L45 92 L22 92 Z",
+    sneaker: "M8 60 L8 40 L36 42 L50 26 Q64 30 72 40 L92 52 L92 62 Z",
+    bag: "M22 40 L78 40 L84 88 L16 88 Z"
+  };
+  let uid = 0;
+  function thumb(item) {
+    const id = "pt" + (++uid);
+    const a = COLOR[item.colours[0]], b = COLOR[item.colours[1]] || "#fbfbf8";
+    let defs = "";
+    if (item.pattern === "stripe") defs = `<pattern id="${id}" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="${a}"/><rect width="5" height="10" fill="${b}"/></pattern>`;
+    if (item.pattern === "check") defs = `<pattern id="${id}" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="${a}"/><rect width="8" height="8" fill="${b}" opacity=".7"/><rect x="8" y="8" width="8" height="8" fill="${b}" opacity=".7"/></pattern>`;
+    if (item.pattern === "dot") defs = `<pattern id="${id}" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="${a}"/><circle cx="6" cy="6" r="2.4" fill="${b}"/></pattern>`;
+    const fill = defs ? `url(#${id})` : a;
+    let extra = "";
+    if (item.type === "bag") extra = `<path d="M36 40 Q36 14 50 14 Q64 14 64 40" fill="none" stroke="#2a2622" stroke-width="3"/>`;
+    if (item.type === "sneaker") extra = `<path d="M8 62 H92 V70 H8 Z" fill="#2a2622"/>`;
+    return `<svg viewBox="0 0 100 100" role="img" aria-label="${item.title} illustration">${defs ? `<defs>${defs}</defs>` : ""}<rect width="100" height="100" fill="#f2efe7"/><path d="${SHAPES[item.type]}" fill="${fill}" stroke="#2a2622" stroke-width="1.2" stroke-linejoin="round"/>${extra}</svg>`;
+  }
+
+  // ---------- query building (embed stage) ----------
+  const typeOf = w => { for (const c of [w, w.replace(/s$/, ""), w.replace(/es$/, "")]) { const x = SYN[c] || c; if (TYPES.includes(x)) return x; } return null; };
+  const patOf = w => { for (const c of [w, w.replace(/s$/, ""), w.replace(/es$/, "")]) { const x = SYN[c] || c; if (PATTERNS.includes(x)) return x; } return null; };
+
+  function queryFromText(text) {
+    const toks = text.toLowerCase().split(/[^a-z-]+/).filter(Boolean);
+    const colours = [], types = [], pats = [], ignored = [];
+    for (const w of toks) {
+      const c = COLOR_ALIAS[w] || w;
+      if (COLOR[c]) { colours.push(c); continue; }
+      const t = typeOf(w); if (t) { types.push(t); continue; }
+      const p = patOf(w); if (p) { pats.push(p); continue; }
+      ignored.push(w);
+    }
+    const tv = zeros(6), pv = zeros(4);
+    types.forEach(t => { tv[TYPES.indexOf(t)] = 1; });
+    pats.forEach(p => { pv[PATTERNS.indexOf(p)] = 1; });
+    const cv = colours.length ? colourVec(colours) : zeros(14);
+    const nz = [...cv, ...tv, ...pv].filter(x => x).length;
+    return {
+      kind: "text", label: text || "(empty)", colours, vec: concat(cv, unit(tv), unit(pv)), exclude: null, nz,
+      parsed: `colour=${colours.join("+") || "-"}  type=${types.join("+") || "-"}  pattern=${pats.join("+") || "-"}` + (ignored.length ? `  ignored=${ignored.join(",")}` : ""),
+      detail: `${toks.length} tokens → ${colours.length + types.length + pats.length} recognised terms`,
+      thumbHtml: `<span class="mono" style="font-size:20px;display:grid;place-items:center;height:100%">T</span>`
+    };
+  }
+
+  function queryFromItem(item) {
+    const nz = item.vec.filter(x => x).length;
+    return {
+      kind: "item", label: "More like: " + item.title, colours: item.colours, vec: item.vec, exclude: item.id, nz,
+      parsed: `colours=${item.colours.join("+")}  type=${item.type}  pattern=${item.pattern}  (self excluded)`,
+      detail: `catalogue vector for “${item.title}”, read from its attributes`,
+      thumbHtml: thumb(item)
+    };
+  }
+
+  function queryFromImage(img, dataUrl) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 48;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.drawImage(img, 0, 0, 48, 48);
+    const d = g.getImageData(0, 0, 48, 48).data;
+    const hist = zeros(14); let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 128) continue;
+      hist[colourBin(d[i], d[i + 1], d[i + 2])]++; n++;
+    }
+    const top = hist.indexOf(Math.max(...hist));
+    const names = Object.keys(COLOR).filter(k => { const [r, gg, b] = hexRgb(COLOR[k]); return colourBin(r, gg, b) === top; });
+    const cv = unit(hist);
+    return {
+      kind: "image", label: "Uploaded image", colours: names.slice(0, 1), vec: concat(cv, zeros(6), zeros(4)), exclude: null,
+      nz: cv.filter(x => x).length, n,
+      parsed: `pixels sampled=${n} (48×48 grid, transparent skipped)  dominant hue bin=${top}`,
+      detail: `${n} pixels binned into 14 hue/neutral buckets`,
+      thumbHtml: `<img src="${dataUrl}" alt="your upload">`
+    };
+  }
+
+  // ---------- state ----------
+  const state = {
+    q: null, facets: { type: new Set(), colour: new Set(), pattern: new Set(), price: "any" }
+  };
+  const PRICE = { any: () => true, lt150: p => p < 150, mid: p => p >= 150 && p <= 250, gt250: p => p > 250 };
+  const PRICE_LABEL = { any: "Any", lt150: "Under £150", mid: "£150–250", gt250: "Over £250" };
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = p => "£" + p;
+
+  // ---------- pipeline ----------
+  function runPipeline(q, t0Embed) {
+    const T = { embed: t0Embed };
+    // 2. vector search: cosine over every item, keep top 16
+    let t = performance.now();
+    const pool = ITEMS.filter(it => it.id !== q.exclude).map(it => ({ it, sim: cos(q.vec, it.vec) }));
+    pool.sort((a, b) => b.sim - a.sim);
+    const topK = pool.slice(0, 16);
+    T.search = performance.now() - t;
+    // facet counts over the candidate set (before filters, like a facet_counts response)
+    const counts = { type: {}, colour: {}, pattern: {} };
+    topK.forEach(({ it }) => {
+      counts.type[it.type] = (counts.type[it.type] || 0) + 1;
+      counts.pattern[it.pattern] = (counts.pattern[it.pattern] || 0) + 1;
+      it.colours.forEach(c => { counts.colour[c] = (counts.colour[c] || 0) + 1; });
+    });
+    // 3. filter: AND across facets, OR within a facet
+    t = performance.now();
+    const f = state.facets;
+    const kept = topK.filter(({ it }) =>
+      (!f.type.size || f.type.has(it.type)) &&
+      (!f.pattern.size || f.pattern.has(it.pattern)) &&
+      (!f.colour.size || it.colours.some(c => f.colour.has(c))) &&
+      PRICE[f.price](it.price));
+    T.filter = performance.now() - t;
+    // 4. rank: colour-token rerank (+0.06 per shared colour, max 0.12), then dedupe by brand+type
+    t = performance.now();
+    const seen = new Set();
+    const ranked = kept.map(r => {
+      const shared = q.colours.filter(c => r.it.colours.includes(c)).length;
+      const bonus = Math.min(0.12, 0.06 * shared);
+      return { ...r, bonus, score: r.sim + bonus };
+    }).sort((a, b) => b.score - a.score).filter(r => {
+      const key = r.it.brand + "|" + r.it.type;
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+    T.rank = performance.now() - t;
+    return { topK, kept, ranked, counts, T, dedupedOut: kept.length - ranked.length };
+  }
+
+  // ---------- rendering ----------
+  function activeFacetCount() {
+    const f = state.facets;
+    return f.type.size + f.colour.size + f.pattern.size + (f.price !== "any" ? 1 : 0);
+  }
+
+  function renderStages(res) {
+    const q = state.q, nFacets = activeFacetCount();
+    const stages = [
+      { k: "1 · embed", name: "Query → vector", count: q.vec.length + "-d", d: `${q.detail}. ${q.nz} non-zero dims.`, ms: res.T.embed },
+      { k: "2 · vector search", name: "Cosine top-16", count: `${ITEMS.length - (q.exclude ? 1 : 0)} → ${res.topK.length}`, d: `Linear scan in-browser; Typesense would ANN-search the same space.`, ms: res.T.search },
+      { k: "3 · filter", name: "Facet filter", count: `${res.topK.length} → ${res.kept.length}`, d: nFacets ? `${nFacets} facet ${nFacets === 1 ? "rule" : "rules"} applied (AND across, OR within).` : "No facets active.", ms: res.T.filter },
+      { k: "4 · rank", name: "Rerank + dedupe", count: `${res.kept.length} → ${res.ranked.length}`, d: `colour-token bonus, then one item per brand·type${res.dedupedOut ? ` (${res.dedupedOut} folded)` : ""}.`, ms: res.T.rank }
+    ];
+    const el = $("#stages");
+    const prev = el.dataset.sig;
+    const sig = stages.map(s => s.count).join("|") + q.label;
+    el.innerHTML = stages.map(s => `
+      <div class="stage">
+        <div class="k">${s.k}</div>
+        <b>${s.name}</b>
+        <div class="count">${s.count}</div>
+        <div class="d">${esc(s.d)}</div>
+        <div class="ms">${s.ms.toFixed(2)} ms</div>
+      </div>`).join("");
+    el.dataset.sig = sig;
+    if (prev !== undefined && prev !== sig) el.querySelectorAll(".stage").forEach(n => { n.classList.add("flash"); setTimeout(() => n.classList.remove("flash"), 650); });
+  }
+
+  function renderQuery() {
+    const q = state.q;
+    $("#qbox").innerHTML = `<div class="qthumb">${q.thumbHtml}</div>
+      <div class="qtext"><b>${esc(q.label)}</b><span class="mono" style="font-size:11px;color:var(--clay)">${esc(q.kind === "item" ? "item query" : q.kind === "image" ? "image query" : "text query")}</span></div>`;
+    $("#parsed").textContent = q.parsed;
+  }
+
+  function renderFacets(res) {
+    const f = state.facets;
+    const group = (title, key, values, labelFn, swatchFn) => `
+      <div class="grp"><h4>${title}</h4><div class="chips">${values.map(v => {
+        const n = res.counts[key][v] || 0;
+        const on = f[key].has(v);
+        return `<button class="chip" type="button" data-f="${key}" data-v="${v}" aria-pressed="${on}" ${!n && !on ? "disabled" : ""}>${swatchFn ? `<i class="sw" style="background:${COLOR[v]}"></i>` : ""}${labelFn(v)} <span class="n">${n}</span></button>`;
+      }).join("")}</div></div>`;
+    const colourVals = Object.keys(COLOR).filter(c => ITEMS.some(it => it.colours.includes(c)));
+    const priceChips = Object.keys(PRICE).map(k => `<button class="chip" type="button" data-f="price" data-v="${k}" aria-pressed="${f.price === k}">${PRICE_LABEL[k]}</button>`).join("");
+    $("#facets").innerHTML = `
+      <h4 style="margin-bottom:4px">Refine</h4>
+      ${group("Type", "type", TYPES, v => v)}
+      ${group("Colour", "colour", colourVals, v => v, true)}
+      ${group("Pattern", "pattern", PATTERNS, v => v)}
+      <div class="grp"><h4>Price</h4><div class="chips">${priceChips}</div></div>
+      ${activeFacetCount() ? `<button class="clear" type="button" id="clearf">clear ${activeFacetCount()} filter${activeFacetCount() > 1 ? "s" : ""}</button>` : ""}`;
+  }
+
+  function renderResults(res) {
+    const grid = $("#grid");
+    $("#rcount").textContent = `${res.ranked.length} result${res.ranked.length === 1 ? "" : "s"}`;
+    $("#rnote").textContent = "sorted by score";
+    if (!res.ranked.length) {
+      grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Nothing passes these filters.<br><button class="chip" type="button" id="clearf2" style="margin-top:10px">clear filters</button></div>`;
+      return;
+    }
+    const top = res.ranked[0].score || 1;
+    grid.innerHTML = res.ranked.map(r => `
+      <button class="card" type="button" data-item="${r.it.id}" aria-label="Find items like ${esc(r.it.title)}">
+        ${thumb(r.it)}
+        <div class="m">
+          <div class="t">${esc(r.it.title)}</div>
+          <div class="b">${esc(r.it.brand)} · ${r.it.type}</div>
+          <div class="row"><span>${money(r.it.price)}</span><span>${r.score.toFixed(2)}</span></div>
+          <div class="bar"><i style="width:${Math.max(4, Math.round(r.score / top * 100))}%"></i></div>
+          ${r.bonus ? `<span class="tag" style="justify-self:start;margin-top:4px">+${r.bonus.toFixed(2)} colour</span>` : ""}
+        </div>
+      </button>`).join("");
+  }
+
+  function paint() {
+    const q = state.q;
+    const res = runPipeline(q, state.embedMs);
+    renderQuery();
+    renderStages(res);
+    renderFacets(res);
+    renderResults(res);
+  }
+
+  function setQuery(q, embedMs) {
+    state.q = q; state.embedMs = embedMs;
+    paint();
+  }
+
+  function timed(fn) { const t = performance.now(); const q = fn(); return { q, ms: performance.now() - t }; }
+
+  // ---------- events ----------
+  $("#qform").addEventListener("submit", e => {
+    e.preventDefault();
+    const v = $("#qin").value.trim();
+    if (!v) return;
+    const { q, ms } = timed(() => queryFromText(v));
+    setQuery(q, ms);
+  });
+
+  $("#examples").addEventListener("click", e => {
+    const b = e.target.closest("[data-q]"); if (!b) return;
+    $("#qin").value = b.dataset.q;
+    const { q, ms } = timed(() => queryFromText(b.dataset.q));
+    setQuery(q, ms);
+  });
+
+  $("#file").addEventListener("change", e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => { const { q, ms } = timed(() => queryFromImage(img, reader.result)); setQuery(q, ms); };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  });
+
+  document.addEventListener("click", e => {
+    const chip = e.target.closest("[data-f]");
+    if (chip && !chip.disabled) {
+      const key = chip.dataset.f, val = chip.dataset.v;
+      if (key === "price") state.facets.price = val;
+      else {
+        const set = state.facets[key];
+        set.has(val) ? set.delete(val) : set.add(val);
+      }
+      paint();
+      return;
+    }
+    if (e.target.closest("#clearf, #clearf2")) {
+      state.facets = { type: new Set(), colour: new Set(), pattern: new Set(), price: "any" };
+      paint();
+      return;
+    }
+    const card = e.target.closest("[data-item]");
+    if (card) {
+      const item = ITEMS.find(it => it.id === card.dataset.item);
+      const { q, ms } = timed(() => queryFromItem(item));
+      $("#qin").value = "";
+      setQuery(q, ms);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  });
+
+  // boot with a text query
+  $("#qin").value = "navy stripe";
+  const boot = timed(() => queryFromText("navy stripe"));
+  setQuery(boot.q, boot.ms);
+})();
+</script>
+</body>
+</html>

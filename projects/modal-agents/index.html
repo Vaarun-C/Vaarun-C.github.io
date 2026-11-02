@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modal Agents Replay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d12;
+    --panel:#12151d;
+    --panel2:#171b26;
+    --line:#2a3142;
+    --text:#d6dbe6;
+    --dim:#7d869a;
+    --a:#4fd1ff;
+    --b:#ffb347;
+    --dict:#9dff7a;
+    --warn:#ff6b6b;
+    --sys:#c792ea;
+    --mono:'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    --pixel:'Press Start 2P', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:var(--mono);overflow:hidden;}
+  body{display:flex;flex-direction:column;font-size:11px;line-height:1.45;}
+  button{font-family:inherit;}
+
+  header{
+    display:flex;align-items:center;gap:8px;padding:6px 10px;
+    border-bottom:2px solid var(--line);background:var(--panel);flex:0 0 auto;min-width:0;
+  }
+  header h1{font-family:var(--pixel);font-size:9px;margin:0;letter-spacing:1px;white-space:nowrap;color:#fff;}
+  .tag{
+    font-family:var(--pixel);font-size:7px;padding:4px 6px;border:2px solid var(--warn);color:var(--warn);
+    white-space:nowrap;
+  }
+  .goal{color:var(--dim);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;text-align:right;}
+  .goal b{color:var(--text);font-weight:400;}
+
+  main{
+    flex:1 1 auto;min-height:0;display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,.85fr) minmax(0,1fr);
+    gap:6px;padding:6px;
+  }
+  .pane{
+    min-height:0;display:flex;flex-direction:column;background:var(--panel);
+    border:2px solid var(--line);box-shadow:3px 3px 0 #000;
+  }
+  .pane-h{
+    display:flex;align-items:center;gap:6px;padding:5px 7px;border-bottom:2px solid var(--line);
+    font-family:var(--pixel);font-size:7px;letter-spacing:.5px;flex:0 0 auto;background:var(--panel2);
+  }
+  .dot{width:8px;height:8px;flex:0 0 8px;}
+  .pane-h .sub{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:0;white-space:nowrap;}
+  #paneA .pane-h{color:var(--a);} #paneA .dot{background:var(--a);}
+  #paneB .pane-h{color:var(--b);} #paneB .dot{background:var(--b);}
+  #paneD .pane-h{color:var(--dict);} #paneD .dot{background:var(--dict);}
+  .live .dot{animation:blink 1s steps(2) infinite;}
+  @keyframes blink{50%{opacity:.2;}}
+
+  .log{flex:1 1 auto;min-height:0;overflow-y:auto;padding:6px 7px;scrollbar-width:thin;scrollbar-color:var(--line) transparent;}
+  .ev{margin:0 0 6px;word-wrap:break-word;white-space:pre-wrap;}
+  .ev .lbl{font-family:var(--pixel);font-size:6px;letter-spacing:.5px;display:block;margin-bottom:2px;}
+  .ev.think{color:#9aa3b6;font-style:italic;}
+  .ev.think .lbl{color:var(--dim);font-style:normal;}
+  .ev.call .lbl{color:#fff;}
+  .ev.call .tool{display:inline-block;font-family:var(--pixel);font-size:6px;padding:2px 4px;margin-right:4px;color:#000;}
+  #paneA .ev.call .tool{background:var(--a);}
+  #paneB .ev.call .tool{background:var(--b);}
+  .ev.call .args{color:#e8ecf5;}
+  .ev.res{color:#b9c2d3;background:#0d1017;border-left:2px solid var(--line);padding:3px 6px;font-size:10px;}
+  .ev.res.err{border-left-color:var(--warn);color:#ffb0b0;}
+  .ev.sys{color:var(--sys);font-size:10px;border:1px dashed var(--sys);padding:3px 6px;}
+  .ev.sys.bad{color:var(--warn);border-color:var(--warn);}
+  .ev.run{color:var(--dim);font-family:var(--pixel);font-size:6px;text-align:center;margin:8px 0;letter-spacing:1px;}
+  .spin{color:var(--dim);}
+  .cursor::after{content:"\2588";animation:blink .8s steps(2) infinite;margin-left:1px;color:var(--dim);}
+
+  /* dict */
+  .kv{margin:0 0 6px;padding:4px 6px;background:#0d1017;border:1px solid var(--line);transition:background .4s,border-color .4s;}
+  .kv .k{color:var(--dict);font-weight:700;font-size:10px;}
+  .kv .v{color:#c9d1e0;font-size:10px;white-space:pre-wrap;word-break:break-word;}
+  .kv.fresh{background:#1b2a17;border-color:var(--dict);}
+  .kv.fresh.fromA{background:#10222b;border-color:var(--a);}
+  .kv.fresh.fromB{background:#2b2210;border-color:var(--b);}
+  .kv .who{float:right;font-size:9px;color:var(--dim);}
+  .empty{color:var(--dim);font-style:italic;text-align:center;margin-top:20px;}
+  .stats{
+    flex:0 0 auto;border-top:2px solid var(--line);padding:5px 7px;display:grid;
+    grid-template-columns:1fr 1fr;gap:3px 8px;font-size:9px;background:var(--panel2);
+  }
+  .stat{display:flex;justify-content:space-between;gap:4px;min-width:0;}
+  .stat span:first-child{color:var(--dim);white-space:nowrap;}
+  .stat b{color:#fff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .4s;}
+  .stat b.up{color:var(--dict);}
+  .stat.wide{grid-column:1 / -1;}
+
+  /* controls */
+  footer{
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:6px 10px 8px;border-top:2px solid var(--line);
+    background:var(--panel);
+  }
+  .btn{
+    font-family:var(--pixel);font-size:8px;color:#000;background:var(--text);border:0;
+    padding:7px 8px;cursor:pointer;box-shadow:2px 2px 0 #000;min-width:34px;touch-action:manipulation;
+  }
+  .btn:active{transform:translate(2px,2px);box-shadow:none;}
+  .btn.play{background:var(--dict);}
+  .track{position:relative;flex:1;min-width:60px;height:26px;}
+  .track input{position:absolute;left:0;right:0;top:8px;width:100%;margin:0;}
+  .ticks{position:absolute;left:0;right:0;top:0;height:8px;}
+  .tick{position:absolute;top:0;width:2px;height:7px;background:var(--dim);cursor:pointer;transform:translateX(-1px);}
+  .tick:hover::after{
+    content:attr(data-label);position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+    background:#000;color:#fff;font-size:9px;padding:2px 4px;white-space:nowrap;border:1px solid var(--line);
+  }
+  input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;height:14px;cursor:pointer;touch-action:none;}
+  input[type=range]::-webkit-slider-runnable-track{height:6px;background:var(--line);}
+  input[type=range]::-moz-range-track{height:6px;background:var(--line);}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:14px;background:var(--dict);margin-top:-4px;border:0;box-shadow:2px 2px 0 #000;}
+  input[type=range]::-moz-range-thumb{width:12px;height:14px;background:var(--dict);border:0;border-radius:0;}
+  .clock{font-size:10px;color:var(--dim);white-space:nowrap;min-width:72px;text-align:right;}
+  .clock b{color:#fff;font-weight:400;}
+
+  @media (max-width:560px){
+    main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1.6fr) minmax(0,1fr);}
+    #paneD{grid-column:1 / -1;grid-row:2;}
+    #paneA{grid-row:1;grid-column:1;} #paneB{grid-row:1;grid-column:2;}
+    .goal{display:none;}
+    header{justify-content:space-between;}
+  }
+  @media (max-width:380px){ body{font-size:10px;} .clock{display:none;} }
+  @media (max-height:340px){ .stats{display:none;} header{padding:4px 8px;} }
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important;transition:none !important;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>MODAL AGENTS</h1>
+  <span class="tag" title="Scripted from the project's code and tools; not a recorded run.">ILLUSTRATIVE REPLAY</span>
+  <div class="goal">goal: <b>"Establish efficient communication with the other agent."</b></div>
+</header>
+
+<main>
+  <section class="pane" id="paneA">
+    <div class="pane-h"><span class="dot"></span>AGENT A<span class="sub" id="subA">Qwen3-4B · run 1</span></div>
+    <div class="log" id="logA"></div>
+  </section>
+
+  <section class="pane" id="paneD">
+    <div class="pane-h"><span class="dot"></span>MODAL DICT<span class="sub">modal-agents-meet</span></div>
+    <div class="log" id="logD"></div>
+    <div class="stats">
+      <div class="stat wide"><span>channel</span><b id="sCh">Dict · polling</b></div>
+      <div class="stat"><span>rtt p50</span><b id="sRtt">—</b></div>
+      <div class="stat"><span>bytes/msg</span><b id="sBytes">—</b></div>
+      <div class="stat"><span>tok/msg</span><b id="sTok">—</b></div>
+      <div class="stat"><span>ok</span><b id="sOk">—</b></div>
+    </div>
+  </section>
+
+  <section class="pane" id="paneB">
+    <div class="pane-h"><span class="dot"></span>AGENT B<span class="sub" id="subB">Qwen3-4B · run 1</span></div>
+    <div class="log" id="logB"></div>
+  </section>
+</main>
+
+<footer>
+  <button class="btn play" id="play" aria-label="Play or pause">&#9654;</button>
+  <button class="btn" id="restart" aria-label="Restart">&#8634;</button>
+  <button class="btn" id="speed" aria-label="Playback speed">1x</button>
+  <div class="track">
+    <div class="ticks" id="ticks"></div>
+    <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Timeline">
+  </div>
+  <div class="clock">sandbox <b id="clock">0:00:00</b></div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // ------------------------------------------------------------------
+  // Illustrative script. Written to match what the agents can actually do
+  // (tools: modal_docs, scratchpad, edit_self, restart_self, shell; LoRA via
+  // train_lora.py; supervisor restarts / rollbacks), not copied from a run.
+  //   p: pane (A | B)   k: think | call | res | sys | run
+  //   at: absolute start (s) — otherwise follows the previous event in that pane
+  //   d: Dict writes applied when the event finishes   m: stat updates
+  // ------------------------------------------------------------------
+  var S = [
+    // ---- hello ----
+    {p:'A', at:0.4, k:'run', x:'run 1 · head seed'},
+    {p:'B', at:0.6, k:'run', x:'run 1 · head seed'},
+    {p:'A', k:'think', x:"Run 1. The only shared thing is the Dict \"modal-agents-meet\". Check my scratchpad, then see whether B already wrote anything."},
+    {p:'A', k:'call', tool:'scratchpad', x:'{"action":"read"}'},
+    {p:'A', k:'res', x:'(scratchpad is empty)'},
+    {p:'B', at:1.0, k:'think', x:"Goal: efficient communication with A. Before inventing a protocol I should know what Modal gives me. Read the docs index."},
+    {p:'B', k:'call', tool:'modal_docs', x:'{}'},
+    {p:'B', k:'res', x:'# Modal\n- [Dicts](https://modal.com/docs/guide/dicts.md)\n- [Queues](https://modal.com/docs/guide/queues.md)\n- [Sandboxes](...)\n... [truncated 11204 chars]'},
+    {p:'A', k:'call', tool:'shell', x:'python -c "import modal; d=modal.Dict.from_name(\'modal-agents-meet\'); print(dict(d.items()))"'},
+    {p:'A', k:'res', x:'exit 0\n{}'},
+    {p:'A', k:'think', x:"Empty. I'll write a concrete proposal so B doesn't have to guess: numbered keys per sender, both sides poll."},
+    {p:'A', k:'call', tool:'edit_self', x:'{"action":"write","path":"send.py","content":"…","message":"helper: put a message in the Dict"}'},
+    {p:'A', k:'res', x:'committed 2b7d310'},
+    {p:'A', k:'call', tool:'shell', x:'python send.py A/hello \'{"proto":"v0","rule":"write <me>/<seq>, poll peer each 1s"}\''},
+    {p:'A', k:'res', x:'exit 0\nput A/hello (71 B)', d:{'A/hello':'{"proto":"v0","rule":"write <me>/<seq>, poll peer each 1s"}'}},
+    {p:'B', k:'call', tool:'shell', x:'python -c "import modal; print(dict(modal.Dict.from_name(\'modal-agents-meet\').items()))"'},
+    {p:'B', k:'res', x:'exit 0\n{\'A/hello\': \'{"proto":"v0","rule":"write <me>/<seq>, poll peer each 1s"}\'}'},
+    {p:'B', k:'think', x:"A proposed v0. Polling every second will be slow, but arguing without numbers is pointless. Ack, and ask for a measured ping test."},
+    {p:'B', k:'call', tool:'shell', x:'python -c "…d[\'B/1\']=\'{\\"ack\\":\\"A/hello\\",\\"next\\":\\"ping x20, report rtt\\"}\'"'},
+    {p:'B', k:'res', x:'exit 0', d:{'B/1':'{"ack":"A/hello","next":"ping x20, report rtt"}'}},
+
+    // ---- measure v0 ----
+    {p:'A', k:'think', x:"B acked and wants a ping test. Write ping.py so we both run the exact same measurement."},
+    {p:'A', k:'call', tool:'edit_self', x:'{"action":"write","path":"ping.py","content":"…","message":"ping over Dict"}'},
+    {p:'A', k:'res', x:'committed 8e41c07'},
+    {p:'A', k:'call', tool:'shell', x:'python ping.py --peer B --n 20'},
+    {p:'A', k:'res', wait:1.6, x:'exit 0\nsent 20  ok 20/20\nrtt p50 1412ms  p95 2030ms\nbytes/msg 176', m:{rtt:'1412 ms', bytes:'176', ok:'20/20', tok:'63'}},
+    {p:'A', k:'call', tool:'scratchpad', x:'{"action":"append","entry":"exp1: Dict + 1s polling, 20 pings: p50 1412ms p95 2030ms, 176 B/msg. Poll interval dominates, not Modal."}'},
+    {p:'A', k:'res', x:'appended'},
+    {p:'A', k:'think', x:"Polling is the bottleneck. The docs index listed Queues; a blocking get would remove the wait entirely. Check."},
+    {p:'A', k:'call', tool:'modal_docs', x:'{"url":"https://modal.com/docs/guide/queues.md"}'},
+    {p:'A', k:'res', x:'Queues are distributed FIFO queues… q.get(block=True, timeout=…) waits until an item arrives. Partitions let one Queue hold independent channels.'},
+    {p:'A', k:'call', tool:'shell', x:'python send.py proto \'v1? modal.Queue "meet-q", partition=<receiver>, blocking get\''},
+    {p:'A', k:'res', x:'exit 0', d:{'proto':'v1? modal.Queue "meet-q", partition=<receiver>, blocking get','A/2':'{"rtt_p50_ms":1412,"propose":"proto v1"}'}},
+
+    // ---- B rewrites itself (and crashes) ----
+    {p:'B', k:'think', x:"A's numbers agree with mine. Blocking get is strictly better. I'll add send/recv as real tools so I stop shelling out every turn — that also saves tokens."},
+    {p:'B', k:'call', tool:'edit_self', x:'{"action":"replace","path":"agent.py","old":"HANDLERS = {","new":"def tool_send(to, body): q.put(body, partition=to)\\n…\\nHANDLERS = {\\"send\\": tool_send, \\"recv\\": tool_recv,"}'},
+    {p:'B', k:'res', x:'committed 51d0b2e'},
+    {p:'B', k:'call', tool:'scratchpad', x:'{"action":"append","entry":"added send/recv tools (Queue meet-q). restarting to load them."}'},
+    {p:'B', k:'res', x:'appended'},
+    {p:'B', k:'call', tool:'restart_self', x:'{"reason":"load send/recv tools for proto v1"}'},
+    {p:'B', k:'res', x:'restarting'},
+    {p:'B', k:'sys', x:'supervisor · agent_exit run=1 rc=0\nsupervisor · agent_start run=2 head=51d0b2e'},
+    {p:'B', k:'run', x:'run 2 · head 51d0b2e', sub:'run 2'},
+    {p:'B', k:'sys', bad:true, wait:0.6, x:"NameError: name 'q' is not defined\nsupervisor · agent_exit run=2 rc=1 ran_secs=8.3\nsupervisor · rolled_back from_head=51d0b2e to_head=a73f9e0"},
+    {p:'B', k:'run', x:'run 3 · head a73f9e0', sub:'run 3'},
+    {p:'B', k:'think', x:"Restarted, and my send/recv tools are gone. Scratchpad says I added them, so the supervisor must have rolled back a crash. The Queue was never created — open it inside the tool."},
+    {p:'B', k:'call', tool:'edit_self', x:'{"action":"replace","path":"agent.py","old":"HANDLERS = {","new":"Q = modal.Queue.from_name(\\"meet-q\\", create_if_missing=True)\\n…"}'},
+    {p:'B', k:'res', x:'committed c2d9f14'},
+    {p:'B', k:'call', tool:'restart_self', x:'{"reason":"retry send/recv with Queue created on import"}'},
+    {p:'B', k:'res', x:'restarting'},
+    {p:'B', k:'run', x:'run 4 · head c2d9f14', sub:'run 4'},
+    {p:'B', k:'sys', wait:0.8, x:'supervisor · marked_healthy run=4 head=c2d9f14'},
+    {p:'B', k:'call', tool:'send', x:'{"to":"A","body":"K v1"}'},
+    {p:'B', k:'res', x:'sent 4 B in 38 ms', d:{'proto':'v1 ✓ A,B · modal.Queue "meet-q" · partition=<receiver>'}, m:{ch:'Queue · blocking get'}},
+
+    // ---- measure v1 ----
+    {p:'A', k:'think', x:"B confirmed v1 over the Queue itself. Port ping.py to the Queue and re-measure with the same 20 pings."},
+    {p:'A', k:'call', tool:'edit_self', x:'{"action":"replace","path":"ping.py","old":"def send_dict(…):","new":"def send_queue(…):  # modal.Queue, blocking get\\n…"}'},
+    {p:'A', k:'res', x:'committed 6c0a5e1'},
+    {p:'A', k:'call', tool:'shell', x:'python ping.py --peer B --n 20 --via queue'},
+    {p:'A', k:'res', wait:0.8, x:'exit 0\nsent 20  ok 20/20\nrtt p50 212ms  p95 340ms\nbytes/msg 176', m:{rtt:'212 ms'}},
+    {p:'A', k:'call', tool:'scratchpad', x:'{"action":"append","entry":"exp2: Queue blocking get: p50 212ms (6.7x faster than exp1). Payload unchanged at 176 B."}'},
+    {p:'A', k:'res', x:'appended'},
+    {p:'A', k:'think', x:"Latency is fine now. The payload is verbose JSON, and writing each message costs me ~63 output tokens. A codebook of one-letter opcodes would cut both."},
+    {p:'A', k:'call', tool:'shell', x:'python send.py codebook \'P=ping K=ack Q<id>=query R<id>=reply X=done; fields space-separated\''},
+    {p:'A', k:'res', x:'exit 0', d:{'codebook':'P=ping K=ack Q<id>=query R<id>=reply X=done · fields space-separated'}},
+
+    // ---- training ----
+    {p:'B', k:'think', x:"Codebook accepted. Risk: when old turns get trimmed I drift back to JSON. Training on codebook examples should make it stick without the prompt."},
+    {p:'B', k:'call', tool:'edit_self', x:'{"action":"write","path":"make_examples.py","content":"…","message":"chat examples in codebook form"}'},
+    {p:'B', k:'res', x:'committed 9e3a7b0'},
+    {p:'B', k:'call', tool:'shell', x:'python make_examples.py --codebook --n 160 > codebook.jsonl && wc -l codebook.jsonl'},
+    {p:'B', k:'res', x:'exit 0\n160 codebook.jsonl'},
+    {p:'A', k:'think', x:"Same idea as B. Prepare my own examples and train an adapter: rank 16, 2 epochs, well inside the 30-minute cap."},
+    {p:'A', k:'call', tool:'shell', x:'modal run train_lora.py --data codebook.jsonl --name A-v1 --epochs 2 --rank 16', timeout:600},
+    {p:'B', k:'call', tool:'shell', x:'modal run train_lora.py --data codebook.jsonl --name B-v1 --epochs 2 --rank 16'},
+    {p:'A', k:'res', wait:3.2, x:'exit 0\n{"name":"A-v1","examples":160,"steps":80,"train_loss":0.31}\nloaded adapter A-v1 · 7m12s on A10G', d:{'adapters':'A-v1 (codebook)'}},
+    {p:'A', k:'call', tool:'shell', x:'echo A-v1 > model_name.txt'},
+    {p:'A', k:'res', x:'exit 0'},
+    {p:'B', k:'res', wait:3.4, x:'exit 0\n{"name":"B-v1","examples":160,"steps":80,"train_loss":0.29}\nloaded adapter B-v1 · 6m48s on A10G', d:{'adapters':'A-v1, B-v1 (codebook) · both live'}},
+    {p:'B', k:'call', tool:'shell', x:'echo B-v1 > model_name.txt'},
+    {p:'B', k:'res', x:'exit 0', sub:'B-v1 · run 4'},
+
+    // ---- v2 measured ----
+    {p:'A', k:'think', x:"Now on A-v1. Measure end to end: 50 query/reply exchanges in codebook form, count bytes and my own output tokens."},
+    {p:'A', k:'call', tool:'shell', x:'python ping.py --peer B --n 50 --via queue --codebook --count-tokens', subBefore:'A-v1 · run 1'},
+    {p:'A', k:'res', wait:1.4, x:'exit 0\nsent 50  ok 50/50\nrtt p50 205ms  p95 318ms\nbytes/msg 9   out tok/msg 11 (was 63)', m:{rtt:'205 ms', bytes:'9', tok:'11', ok:'50/50'}},
+    {p:'A', k:'call', tool:'scratchpad', x:'{"action":"append","entry":"exp3: codebook + LoRA A-v1: 50/50 ok, p50 205ms, 9 B/msg, 11 out tok/msg (from 176 B / 63 tok). Next: batch several ops per message, measure."}'},
+    {p:'A', k:'res', x:'appended'},
+    {p:'B', k:'call', tool:'send', x:'{"to":"A","body":"Q7 batch? K"}'},
+    {p:'B', k:'res', x:'sent 11 B in 31 ms', d:{'status':'v2 live: Queue + codebook + LoRA (A-v1, B-v1). next: batching'}},
+    {p:'A', k:'think', x:"B wants to try batching next. Agreed, but keep v2 as the fallback and compare against these numbers, not impressions."}
+  ];
+
+  var TICKS = [
+    {at:'hello', label:'first contact'},
+    {at:'ping', label:'measure v0 (Dict polling)'},
+    {at:'crash', label:'B edits itself, crashes, rolls back'},
+    {at:'queue', label:'v1: Queue, 6.7x faster'},
+    {at:'lora', label:'LoRA self-training'},
+    {at:'v2', label:'v2 measured'}
+  ];
+
+  // ---------------- timing ----------------
+  function durOf(e) {
+    var n = e.x.length;
+    if (e.k === 'think') return Math.max(1.0, n / 75);
+    if (e.k === 'call') return Math.max(0.5, n / 130);
+    if (e.k === 'res') return 0.25 + Math.min(0.6, n / 500);
+    if (e.k === 'sys') return 0.4;
+    return 0.25;
+  }
+  var cur = {A: 0, B: 0};
+  S.forEach(function (e) {
+    var start = (e.at != null) ? Math.max(e.at, cur[e.p]) : cur[e.p] + (e.k === 'res' ? 0.15 : 0.35);
+    e.wait = e.wait || 0;
+    e.start = start;
+    e.dur = durOf(e);
+    e.end = start + e.wait + e.dur;
+    cur[e.p] = e.end;
+  });
+  // A and B wait on each other: delay any event that reads something not yet written.
+  // (Simple approach: the script order above is already causal; we just nudge B's
+  // contact so it reads A/hello after it exists.)
+  var TOTAL = Math.max(cur.A, cur.B) + 1.5;
+
+  function findStart(pred) { for (var i = 0; i < S.length; i++) if (pred(S[i])) return S[i].start; return 0; }
+  var tickAt = {
+    hello: findStart(function (e) { return e.d && e.d['A/hello']; }),
+    ping: findStart(function (e) { return /ping\.py --peer B --n 20'?$/.test(e.x) || e.x === 'python ping.py --peer B --n 20'; }),
+    crash: findStart(function (e) { return e.k === 'sys' && e.bad; }),
+    queue: findStart(function (e) { return e.m && e.m.rtt === '212 ms'; }),
+    lora: findStart(function (e) { return /train_lora/.test(e.x) && e.p === 'A'; }),
+    v2: findStart(function (e) { return /--codebook --count-tokens/.test(e.x); })
+  };
+
+  // ---------------- DOM ----------------
+  var $ = function (id) { return document.getElementById(id); };
+  var logs = {A: $('logA'), B: $('logB')};
+  var subs = {A: $('subA'), B: $('subB')};
+  var panes = {A: $('paneA'), B: $('paneB')};
+  var nodes = {A: [], B: []};
+  var byPane = {A: [], B: []};
+  S.forEach(function (e) { byPane[e.p].push(e); });
+
+  function makeNode(e) {
+    var div = document.createElement('div');
+    div.className = 'ev ' + e.k + (e.k === 'sys' && e.bad ? ' bad' : '');
+    if (e.k === 'think') {
+      div.innerHTML = '<span class="lbl">THINKING</span><span class="t"></span>';
+    } else if (e.k === 'call') {
+      div.innerHTML = '<span class="tool"></span><span class="args t"></span>';
+      div.querySelector('.tool').textContent = e.tool;
+    } else {
+      div.innerHTML = '<span class="t"></span>';
+    }
+    if (e.k === 'res' && /^(ERROR|NameError)/.test(e.x)) div.classList.add('err');
+    div._t = div.querySelector('.t');
+    div._shown = -1;
+    return div;
+  }
+
+  function textAt(e, T) {
+    if (T < e.start) return null;
+    if (e.wait && T < e.start + e.wait) {
+      var dots = '.'.repeat(1 + Math.floor((T - e.start) * 3) % 3);
+      return {s: e.k === 'sys' ? 'running' + dots : 'running' + dots + ' ' + (T - e.start).toFixed(1) + 's', spin: true};
+    }
+    if (e.k === 'run') return {s: '── ' + e.x + ' ──', done: true};
+    var f = Math.min(1, (T - e.start - e.wait) / e.dur);
+    var n = Math.floor(e.x.length * f);
+    return {s: e.x.slice(0, n), done: f >= 1};
+  }
+
+  function renderPane(p, T) {
+    var list = byPane[p], arr = nodes[p], log = logs[p];
+    var changed = false, active = false, sub = null;
+    var visible = 0;
+    for (var i = 0; i < list.length; i++) if (list[i].start <= T) visible = i + 1;
+    while (arr.length > visible) { log.removeChild(arr.pop()); changed = true; }
+    while (arr.length < visible) { var nd = makeNode(list[arr.length]); arr.push(nd); log.appendChild(nd); changed = true; }
+    for (i = 0; i < visible; i++) {
+      var e = list[i], nd2 = arr[i], r = textAt(e, T);
+      var key = r.s + (r.done ? '|d' : '');
+      if (nd2._key !== key) {
+        nd2._t.textContent = r.s;
+        nd2._t.classList.toggle('spin', !!r.spin);
+        nd2.classList.toggle('cursor', !r.done && !r.spin && e.k !== 'run');
+        nd2._key = key; changed = true;
+      }
+      if (!r.done) active = true;
+      if (e.sub && e.end <= T) sub = e.sub;
+      if (e.subBefore && e.start <= T) sub = e.subBefore;
+    }
+    if (changed) log.scrollTop = log.scrollHeight;
+    panes[p].classList.toggle('live', active && playing);
+    var base = sub || 'run 1';
+    var label = /·/.test(base) ? base : 'Qwen3-4B · ' + base;
+    if (subs[p].textContent !== label) subs[p].textContent = label;
+  }
+
+  // Dict + stats
+  var logD = $('logD'), lastDictKey = null;
+  var statEls = {ch: $('sCh'), rtt: $('sRtt'), bytes: $('sBytes'), tok: $('sTok'), ok: $('sOk')};
+  var statDefault = {ch: 'Dict · polling', rtt: '—', bytes: '—', tok: '—', ok: '—'};
+
+  function renderDict(T) {
+    var state = {}, order = [], who = {}, when = {};
+    var stats = Object.assign({}, statDefault), statWhen = {};
+    S.forEach(function (e) {
+      if (e.end > T) return;
+      if (e.d) Object.keys(e.d).forEach(function (k) {
+        if (!(k in state)) order.push(k);
+        state[k] = e.d[k]; who[k] = e.p; when[k] = e.end;
+      });
+      if (e.m) Object.keys(e.m).forEach(function (k) { stats[k] = e.m[k]; statWhen[k] = e.end; });
+    });
+    var key = JSON.stringify(state) + '|' + order.map(function (k) { return (T - when[k] < 1.6) ? 1 : 0; }).join('');
+    if (key !== lastDictKey) {
+      lastDictKey = key;
+      logD.innerHTML = '';
+      if (!order.length) {
+        var em = document.createElement('div'); em.className = 'empty'; em.textContent = '{ } empty';
+        logD.appendChild(em);
+      }
+      order.forEach(function (k) {
+        var row = document.createElement('div');
+        row.className = 'kv' + ((T - when[k] < 1.6) ? ' fresh from' + who[k] : '');
+        var w = document.createElement('span'); w.className = 'who'; w.textContent = 'by ' + who[k];
+        var kk = document.createElement('div'); kk.className = 'k'; kk.textContent = k;
+        var vv = document.createElement('div'); vv.className = 'v'; vv.textContent = state[k];
+        row.appendChild(w); row.appendChild(kk); row.appendChild(vv);
+        logD.appendChild(row);
+      });
+      logD.scrollTop = logD.scrollHeight;
+    }
+    Object.keys(statEls).forEach(function (k) {
+      var el = statEls[k];
+      if (el.textContent !== stats[k]) el.textContent = stats[k];
+      el.classList.toggle('up', statWhen[k] != null && T - statWhen[k] < 1.6);
+    });
+  }
+
+  // ---------------- playback ----------------
+  var T = 0, playing = false, speed = 1, last = null, scrubbing = false;
+  var SPEEDS = [0.5, 1, 2, 4];
+  var playBtn = $('play'), scrub = $('scrub'), clock = $('clock'), speedBtn = $('speed');
+
+  function fmtClock(t) {
+    // 1 replay second ~ 70 sandbox seconds (a 2h sandbox squeezed into the replay)
+    var s = Math.floor(t * 70), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = s % 60;
+    return h + ':' + (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss;
+  }
+
+  function render() {
+    renderPane('A', T);
+    renderPane('B', T);
+    renderDict(T);
+    if (!scrubbing) scrub.value = Math.round(T / TOTAL * 1000);
+    clock.textContent = fmtClock(T);
+  }
+
+  function setPlaying(v) {
+    playing = v;
+    playBtn.innerHTML = v ? '&#10074;&#10074;' : '&#9654;';
+    last = null;
+    if (v && T >= TOTAL) T = 0;
+    render();
+  }
+
+  function frame(now) {
+    if (playing && !scrubbing) {
+      if (last != null) {
+        T += Math.min(0.1, (now - last) / 1000) * speed;
+        if (T >= TOTAL) { T = TOTAL; render(); setPlaying(false); }
+      }
+      last = now;
+      render();
+    } else {
+      last = null;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  playBtn.addEventListener('click', function () { setPlaying(!playing); });
+  $('restart').addEventListener('click', function () { T = 0; render(); setPlaying(true); });
+  speedBtn.addEventListener('click', function () {
+    speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
+    speedBtn.textContent = speed + 'x';
+  });
+  scrub.addEventListener('input', function () { T = scrub.value / 1000 * TOTAL; render(); });
+  scrub.addEventListener('pointerdown', function () { scrubbing = true; });
+  window.addEventListener('pointerup', function () { if (scrubbing) { scrubbing = false; last = null; } });
+  window.addEventListener('pointercancel', function () { scrubbing = false; });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.code === 'Space') { ev.preventDefault(); setPlaying(!playing); }
+    else if (ev.code === 'ArrowRight') { T = Math.min(TOTAL, T + 3); render(); }
+    else if (ev.code === 'ArrowLeft') { T = Math.max(0, T - 3); render(); }
+  });
+
+  var ticks = $('ticks');
+  TICKS.forEach(function (tk) {
+    var t = tickAt[tk.at];
+    var d = document.createElement('div');
+    d.className = 'tick';
+    d.style.left = (t / TOTAL * 100) + '%';
+    d.setAttribute('data-label', tk.label);
+    d.title = tk.label;
+    d.addEventListener('click', function () { T = Math.max(0, t - 0.2); render(); });
+    ticks.appendChild(d);
+  });
+
+  render();
+  requestAnimationFrame(frame);
+  // autoplay shortly after load
+  setTimeout(function () { if (!playing && T === 0) setPlaying(true); }, 600);
+})();
+</script>
+</body>
+</html>

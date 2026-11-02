@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PageRank Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<style>
+  :root { --bg:#0a0c10; --panel:#11151c; --edge:#222a36; --ink:#c9d1d9; --dim:#6b7686; --acc:#38bdf8; --warm:#f59e0b; --bad:#f87171; --ok:#4ade80; color-scheme: dark; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+  :root[data-theme="dark"] { color-scheme: dark; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden}
+  body{font:12px/1.35 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;display:flex;flex-direction:column}
+  #bar{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;padding:5px 8px;border-bottom:1px solid var(--edge)}
+  #stat{flex-basis:100%;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #stat b{color:var(--ink);font-weight:600}
+  .ok{color:var(--ok)} .warn{color:var(--warm)}
+  button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--edge);border-radius:4px;padding:3px 7px;cursor:pointer}
+  button:hover{border-color:#3a4658}
+  button[aria-pressed="true"]{border-color:var(--acc);color:#fff}
+  label{color:var(--dim);display:flex;align-items:center;gap:4px;white-space:nowrap}
+  input[type=range]{width:64px;accent-color:var(--acc)}
+  #main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1.25fr) minmax(0,1fr)}
+  @media (min-width:520px){ #main{grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)} }
+  #graphBox{position:relative;min-width:0;min-height:0;border-bottom:1px solid var(--edge)}
+  @media (min-width:520px){ #graphBox{border-bottom:0;border-right:1px solid var(--edge)} }
+  #graph{position:absolute;inset:0;touch-action:none;user-select:none}
+  #graph .link .vis{fill:none;stroke:#3b4656;stroke-width:1.6;pointer-events:none;marker-end:url(#arr)}
+  #graph .link .hit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer}
+  #graph .link:hover .vis{stroke:var(--bad)}
+  #graph .link:hover .hit{stroke:rgba(248,113,113,.08)}
+  #graph circle{stroke:#0a0c10;stroke-width:1.5}
+  #graph circle.dangle{stroke:var(--warm);stroke-dasharray:3 2}
+  #graph .nm{fill:var(--ink);font-size:10px;text-anchor:middle;pointer-events:none}
+  #graph .pc{fill:#0a0c10;font-size:9px;font-weight:600;text-anchor:middle;pointer-events:none}
+  #graph .temp{fill:none;stroke:var(--acc);stroke-width:1.5;stroke-dasharray:4 3;pointer-events:none}
+  #graph .tok circle{fill:#f472b6;stroke:#0a0c10;stroke-width:1.5}
+  #flash{position:absolute;left:8px;top:6px;font-size:11px;color:var(--ink);background:rgba(17,21,28,.92);border:1px solid var(--edge);padding:2px 6px;border-radius:3px;opacity:0;transition:opacity .2s;pointer-events:none}
+  #flash.on{opacity:1}
+  #side{display:flex;flex-direction:column;min-height:0;min-width:0}
+  #barsBox{position:relative;flex:1;min-height:56px}
+  #bars{position:absolute;inset:0}
+  #bars .pr{fill:var(--acc)} #bars .sf{fill:rgba(245,158,11,.25);stroke:var(--warm);stroke-width:1}
+  #bars .axis{stroke:var(--edge)} #bars .lb{fill:var(--dim);font-size:9px;text-anchor:middle} #bars .lb.dang{fill:var(--warm)}
+  #bars .vl{fill:var(--ink);font-size:8.5px;text-anchor:middle}
+  #legend{color:var(--dim);font-size:10px;padding:0 8px;white-space:nowrap}
+  .sw{display:inline-block;width:8px;height:8px;margin:0 3px 0 6px;vertical-align:middle}
+  .sw.pr{background:var(--acc)} .sw.sf{border:1px solid var(--warm);background:rgba(245,158,11,.25)}
+  #log{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:2px;flex-shrink:0}
+  #log th,#log td{padding:1px 8px;text-align:right;border-top:1px solid var(--edge);white-space:nowrap}
+  #log th{color:var(--dim);font-weight:400}
+  #log td.dim{color:var(--dim);text-align:left}
+  #hint{color:var(--dim);font-size:11px;padding:4px 8px;border-top:1px solid var(--edge);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+<div id="bar">
+  <div id="stat"></div>
+  <button id="bStep" title="One iteration (Space)">Step</button>
+  <button id="bPlay" aria-pressed="false" title="Play / pause (P)">Play</button>
+  <button id="bRun" title="Iterate until converged or max iterations">Converge</button>
+  <button id="bReset" title="Reset scores to 1/N (R)">Reset</button>
+  <button id="bSurf" aria-pressed="false" title="Random surfer (S)">Surfer</button>
+  <label>d <input id="inD" type="range" min="0.5" max="0.99" step="0.01" value="0.85"><span id="vD">0.85</span></label>
+</div>
+<div id="main">
+  <div id="graphBox">
+    <svg id="graph" aria-label="Directed page graph"></svg>
+    <div id="flash"></div>
+  </div>
+  <div id="side">
+    <div id="barsBox"><svg id="bars" aria-label="Rank per page"></svg></div>
+    <div id="legend"><span class="sw pr"></span>PageRank<span class="sw sf"></span>random surfer share</div>
+    <table id="log"><thead><tr><th>iter</th><th>&Delta; change</th><th>&Sigma; rank</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+<div id="hint">drag node&rarr;node add link &middot; tap link remove &middot; Space step &middot; P play &middot; S surfer</div>
+
+<script>
+/*PR-BEGIN*/
+// Port of pagerank.py: pagerank(graph, damping_factor=0.85, max_iterations=100, epsilon=1e-6).
+// graph = {node: [outgoing nodes]}. Dangling nodes (empty list) pass nothing on, as in the Python.
+function prInit(graph) {
+  const N = Object.keys(graph).length;
+  const s = {};
+  for (const k of Object.keys(graph)) s[k] = 1 / N;
+  return s;
+}
+function prStep(graph, scores, d) {
+  const nodes = Object.keys(graph);
+  const N = nodes.length;
+  const next = {};
+  let delta = 0;
+  for (const node of nodes) {
+    let s = (1 - d) / N;                       // teleportation share
+    for (const nb of nodes) {
+      if (graph[nb].includes(node)) {          // nb links to node
+        s += d * (scores[nb] / graph[nb].length);
+      }
+    }
+    delta += Math.abs(s - scores[node]);
+    next[node] = s;
+  }
+  return { scores: next, delta };
+}
+function pagerank(graph, d = 0.85, maxIter = 100, eps = 1e-6) {
+  let scores = prInit(graph);
+  let iterations = 0;
+  const deltas = [];
+  for (let i = 0; i < maxIter; i++) {
+    const r = prStep(graph, scores, d);
+    scores = r.scores;
+    iterations++;
+    deltas.push(r.delta);
+    if (r.delta < eps) break;                  // converged
+  }
+  return { scores, iterations, deltas };
+}
+/*PR-END*/
+
+// ---- fictional site ----
+const NAMES = ["Home","Docs","Blog","Pricing","About","FAQ","Careers","News","Archive"];
+const POS = {
+  Home:[.5,.5], Docs:[.18,.22], Blog:[.82,.22], Pricing:[.12,.62], About:[.88,.62],
+  FAQ:[.22,.85], Careers:[.78,.85], News:[.5,.1], Archive:[.5,.84]
+};
+const SEED = [
+  ["Home","Docs"],["Home","Blog"],["Home","Pricing"],["Home","About"],
+  ["Docs","Home"],["Docs","FAQ"],
+  ["Blog","Home"],["Blog","News"],["Blog","Archive"],
+  ["Pricing","Home"],["Pricing","Docs"],
+  ["About","Home"],["About","Careers"],
+  ["FAQ","Docs"],["Careers","About"],
+  ["News","Blog"],["News","Home"]
+];
+const EPS = 1e-6, MAX_ITER = 100;
+const graph = {};
+for (const n of NAMES) graph[n] = [];
+for (const [a, b] of SEED) graph[a].push(b);
+
+let damping = 0.85, scores = prInit(graph), iter = 0, deltas = [], converged = false;
+let playing = false, surfer = false, walker = NAMES[0], visits = {}, visitTotal = 0;
+let playTimer = null, surfTimer = null, drag = null, flashTimer = null;
+let W = 0, H = 0, RMAX = 20, MAXS = 1, P = {};
+const RMIN = 6;
+
+const $ = id => document.getElementById(id);
+const svg = d3.select("#graph");
+const svgNode = svg.node();
+svg.append("defs").append("marker")
+  .attr("id","arr").attr("viewBox","0 0 10 10").attr("refX",9).attr("refY",5)
+  .attr("markerWidth",6).attr("markerHeight",6).attr("orient","auto-start-reverse")
+  .append("path").attr("d","M0,0L10,5L0,10z").attr("fill","#5b6779");
+const gLinks = svg.append("g");
+const gNodes = svg.append("g");
+const gTemp = svg.append("path").attr("class","temp");
+const gTok = svg.append("g").attr("class","tok").style("display","none");
+gTok.append("circle").attr("r", 5);
+const fillScale = d3.interpolateRgb("#1d2839", "#38bdf8");
+
+const fmtE = x => x === 0 ? "0" : x.toExponential(1);
+const sumOf = s => { let t = 0; for (const k in s) t += s[k]; return t; };
+const rad = n => RMIN + (RMAX - RMIN) * Math.sqrt(scores[n] / MAXS);
+
+// ---- engine state transitions ----
+function doStep() {
+  if (converged || iter >= MAX_ITER) return false;
+  const r = prStep(graph, scores, damping);
+  scores = r.scores;
+  iter++;
+  deltas.push({ iter, delta: r.delta, sum: sumOf(scores) });
+  if (r.delta < EPS) converged = true;
+  return !(converged || iter >= MAX_ITER);
+}
+function step() { doStep(); render(); }
+function converge() { setPlaying(false); while (doStep()); render(); }
+function setPlaying(on) {
+  playing = on;
+  clearInterval(playTimer);
+  playTimer = on ? setInterval(() => { if (!doStep()) setPlaying(false); render(); }, 420) : null;
+  $("bPlay").textContent = on ? "Pause" : "Play";
+  $("bPlay").setAttribute("aria-pressed", on);
+  renderStat();
+}
+function resetRun() {
+  setPlaying(false);
+  scores = prInit(graph); iter = 0; deltas = []; converged = false;
+  visits = {}; visitTotal = 0; walker = NAMES[0];
+  render();
+}
+function flash(msg) {
+  const f = $("flash");
+  f.textContent = msg; f.classList.add("on");
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => f.classList.remove("on"), 1400);
+}
+
+// ---- random surfer (pagerank_final.py random_walk, alpha = d) ----
+function setSurfer(on) {
+  surfer = on;
+  clearInterval(surfTimer);
+  $("bSurf").setAttribute("aria-pressed", on);
+  if (on) {
+    walker = NAMES[0];
+    gTok.style("display", null);
+    moveTok(false);
+    surfTimer = setInterval(surfStep, 420);
+  } else {
+    gTok.style("display", "none");
+  }
+  render();
+}
+function surfStep() {
+  const outs = graph[walker];
+  let nxt;
+  if (Math.random() < damping) {
+    // follow a random out-link; dangling nodes teleport (the Python would raise on choice([]))
+    nxt = outs.length ? outs[Math.floor(Math.random() * outs.length)]
+                      : NAMES[Math.floor(Math.random() * NAMES.length)];
+  } else {
+    nxt = NAMES[Math.floor(Math.random() * NAMES.length)];
+  }
+  walker = nxt;
+  visits[nxt] = (visits[nxt] || 0) + 1;
+  visitTotal++;
+  moveTok(true);
+  renderSide();
+  renderStat();
+}
+function moveTok(animate) {
+  const p = P[walker];
+  if (!p) return;
+  if (animate) gTok.transition().duration(330).attr("transform", `translate(${p.x},${p.y})`);
+  else gTok.attr("transform", `translate(${p.x},${p.y})`);
+}
+
+// ---- drawing ----
+function linkPath(d) {
+  const pa = P[d.a], pb = P[d.b];
+  const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
+  const dx = pb.x - pa.x, dy = pb.y - pa.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const k = d.rev ? (d.a < d.b ? 1 : -1) * 16 : 0;   // bow reciprocal links apart
+  const cx = mx - dy / len * k, cy = my + dx / len * k;
+  const ra = rad(d.a) + 1, rb = rad(d.b) + 5;
+  const ux = cx - pa.x, uy = cy - pa.y, ul = Math.hypot(ux, uy) || 1;
+  const vx = pb.x - cx, vy = pb.y - cy, vl = Math.hypot(vx, vy) || 1;
+  const sx = pa.x + ux / ul * ra, sy = pa.y + uy / ul * ra;
+  const ex = pb.x - vx / vl * rb, ey = pb.y - vy / vl * rb;
+  return `M${sx},${sy}Q${cx},${cy} ${ex},${ey}`;
+}
+function renderGraph() {
+  const box = $("graphBox");
+  W = box.clientWidth; H = box.clientHeight;
+  svg.attr("width", W).attr("height", H);
+  MAXS = Math.max(1e-12, ...NAMES.map(n => scores[n]));
+  RMAX = Math.max(10, Math.min(24, Math.min(W, H) * 0.085));
+  const padX = RMAX + 8, padY = RMAX + 8;
+  for (const n of NAMES) P[n] = { x: padX + POS[n][0] * (W - 2 * padX), y: padY + POS[n][1] * (H - 2 * padY) };
+
+  const links = [];
+  for (const a of NAMES) for (const b of graph[a]) links.push({ a, b, rev: graph[b].includes(a), key: a + ">" + b });
+  const lk = gLinks.selectAll("g.link").data(links, d => d.key).join(enter => {
+    const g = enter.append("g").attr("class", "link");
+    g.append("path").attr("class", "hit");
+    g.append("path").attr("class", "vis");
+    return g;
+  });
+  lk.select("path.hit").attr("d", linkPath);
+  lk.select("path.vis").attr("d", linkPath);
+  lk.on("click", (ev, d) => {
+    graph[d.a] = graph[d.a].filter(x => x !== d.b);
+    flash(`removed ${d.a} → ${d.b}`);
+    resetRun();
+  });
+
+  const nd = gNodes.selectAll("g.node").data(NAMES).join(enter => {
+    const g = enter.append("g").attr("class", "node");
+    g.append("circle");
+    g.append("text").attr("class", "nm");
+    g.append("text").attr("class", "pc");
+    return g;
+  });
+  nd.attr("transform", d => `translate(${P[d].x},${P[d].y})`);
+  nd.select("circle")
+    .attr("class", d => graph[d].length ? null : "dangle")
+    .transition().duration(240)
+    .attr("r", d => rad(d))
+    .attr("fill", d => fillScale(scores[d] / MAXS));
+  nd.select("text.nm").attr("y", d => rad(d) + 12).text(d => d);
+  nd.select("text.pc").attr("y", 3).text(d => rad(d) >= 14 ? (scores[d] * 100).toFixed(1) + "%" : "");
+  gTok.attr("transform", walker && P[walker] ? `translate(${P[walker].x},${P[walker].y})` : null);
+}
+function renderSide() {
+  const box = $("barsBox");
+  const w = box.clientWidth, h = box.clientHeight;
+  const s = d3.select("#bars").attr("width", w).attr("height", h);
+  s.selectAll("*").remove();
+  const n = NAMES.length, bw = w / n, top = 12, lab = 15;
+  const base = h - lab, plot = Math.max(1, base - top);
+  const vmax = Math.max(1e-9,
+    ...NAMES.map(x => scores[x]),
+    ...NAMES.map(x => visitTotal ? (visits[x] || 0) / visitTotal : 0));
+  NAMES.forEach((name, i) => {
+    const x0 = i * bw;
+    const pr = scores[name] / vmax * plot;
+    const sh = visitTotal ? ((visits[name] || 0) / visitTotal) / vmax * plot : 0;
+    const bwid = bw * 0.36;
+    s.append("rect").attr("class", "pr").attr("x", x0 + bw * 0.1).attr("y", base - pr).attr("width", bwid).attr("height", pr);
+    if (visitTotal) s.append("rect").attr("class", "sf").attr("x", x0 + bw * 0.54).attr("y", base - sh).attr("width", bwid).attr("height", sh);
+    s.append("text").attr("class", graph[name].length ? "lb" : "lb dang")
+      .attr("x", x0 + bw / 2).attr("y", base + 11)
+      .text(bw < 48 ? name.slice(0, 3) : name);
+    if (bw >= 52) s.append("text").attr("class", "vl").attr("x", x0 + bw * 0.28).attr("y", base - pr - 3).text(scores[name].toFixed(3));
+  });
+  s.append("line").attr("class", "axis").attr("x1", 0).attr("x2", w).attr("y1", base).attr("y2", base);
+}
+function renderLog() {
+  const tb = d3.select("#log tbody");
+  tb.html("");
+  if (!deltas.length) {
+    tb.append("tr").html('<td class="dim" colspan="3">no iterations yet, press Step</td>');
+    return;
+  }
+  for (const r of deltas.slice(-6).reverse()) {
+    tb.append("tr").html(`<td>${r.iter}</td><td>${fmtE(r.delta)}</td><td>${r.sum.toFixed(4)}</td>`);
+  }
+}
+function renderStat() {
+  const sum = sumOf(scores);
+  const last = deltas[deltas.length - 1];
+  const dang = NAMES.filter(n => !graph[n].length);
+  const st = converged ? '<b class="ok">converged</b>'
+           : iter >= MAX_ITER ? '<b class="warn">max iter</b>'
+           : playing ? "running" : "paused";
+  let html = `iter <b>${iter}</b> · Δ <b>${last ? fmtE(last.delta) : "–"}</b> · ε 1e-6 · Σ <b>${sum.toFixed(4)}</b> · ${st}`;
+  if (sum < 0.9999 && dang.length) html += ` · <span class="warn">leak at ${dang.join(", ")}</span>`;
+  if (surfer) html += ` · walk ${visitTotal}`;
+  $("stat").innerHTML = html;
+  $("vD").textContent = damping.toFixed(2);
+}
+function render() { renderGraph(); renderSide(); renderLog(); renderStat(); }
+
+// ---- pointer: drag node to node adds a link; tap link removes it ----
+function localXY(ev) {
+  const b = svgNode.getBoundingClientRect();
+  return { x: ev.clientX - b.left, y: ev.clientY - b.top };
+}
+function nodeAt(p) {
+  let best = null, bd = Infinity;
+  for (const n of NAMES) {
+    const d = Math.hypot(P[n].x - p.x, P[n].y - p.y);
+    if (d <= rad(n) + 12 && d < bd) { bd = d; best = n; }
+  }
+  return best;
+}
+function drawTemp(p) {
+  const f = P[drag.from];
+  gTemp.attr("d", `M${f.x},${f.y}L${p.x},${p.y}`);
+}
+svgNode.addEventListener("pointerdown", ev => {
+  const p = localXY(ev);
+  const n = nodeAt(p);
+  if (!n) return;
+  drag = { from: n, id: ev.pointerId };
+  svgNode.setPointerCapture(ev.pointerId);
+  ev.preventDefault();
+  drawTemp(p);
+});
+svgNode.addEventListener("pointermove", ev => {
+  if (!drag || ev.pointerId !== drag.id) return;
+  drawTemp(localXY(ev));
+});
+function endDrag(ev) {
+  if (!drag) return;
+  const from = drag.from;
+  const to = nodeAt(localXY(ev));
+  drag = null;
+  gTemp.attr("d", null);
+  if (!to || to === from) return;
+  if (graph[from].includes(to)) { flash(`${from} → ${to} already linked`); return; }
+  graph[from].push(to);
+  flash(`added ${from} → ${to}`);
+  resetRun();
+}
+svgNode.addEventListener("pointerup", endDrag);
+svgNode.addEventListener("pointercancel", () => { drag = null; gTemp.attr("d", null); });
+
+// ---- controls ----
+$("bStep").onclick = () => { setPlaying(false); step(); };
+$("bPlay").onclick = () => setPlaying(!playing);
+$("bRun").onclick = converge;
+$("bReset").onclick = resetRun;
+$("bSurf").onclick = () => setSurfer(!surfer);
+$("inD").oninput = e => { damping = +e.target.value; resetRun(); };
+addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" && e.target.type === "range") return;
+  if (e.key === " ") { e.preventDefault(); setPlaying(false); step(); }
+  else if (e.key === "p" || e.key === "P") setPlaying(!playing);
+  else if (e.key === "r" || e.key === "R") resetRun();
+  else if (e.key === "s" || e.key === "S") setSurfer(!surfer);
+});
+new ResizeObserver(() => render()).observe($("main"));
+render();
+</script>
+</body>
+</html>

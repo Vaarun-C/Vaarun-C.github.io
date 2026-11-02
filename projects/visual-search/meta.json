@@ -1,0 +1,21 @@
+{
+ "title": "Lookbook Search",
+ "tagline": "Find visually similar fashion, explained stage by stage",
+ "description": "A fashion visual-search demo that runs entirely in your browser. Pick an item, type a query, or upload a photo, and it embeds the query into a feature vector, runs a cosine vector search, applies facet filters, then reranks and dedupes the results. Each pipeline stage is shown with its counts and timings, mirroring a production image-search backend.",
+ "tech": [
+  "JavaScript",
+  "SVG",
+  "Canvas",
+  "Cosine similarity",
+  "Facet filters"
+ ],
+ "kind": "ml",
+ "repo": null,
+ "controls": "Type a query or click an example · Upload image · Click a result to find more like it · Toggle facets",
+ "context": "Production work",
+ "highlights": [
+  "Image-embedding search over a fashion catalogue with a vector database",
+  "Hybrid text and image queries with facet filters, colour-aware reranking and dedupe",
+  "Batch ingestion pipelines and diagnostics for facet coverage"
+ ]
+}

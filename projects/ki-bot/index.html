@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ki Spawn Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0a0d;
+    --panel: #17141d;
+    --panel2: #221d2b;
+    --line: #2b2634;
+    --ink: #ece6d6;
+    --dim: #8d869a;
+    --amber: #ffc53d;
+    --green: #5cf2b0;
+    --red: #ff5c6c;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--ink); overflow: hidden; }
+  body { font: 13px/1.45 "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+  #app { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  header {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 7px 10px; background: var(--panel); border-bottom: 2px solid #000;
+    font: 9px "Press Start 2P", ui-monospace, monospace; color: var(--dim);
+  }
+  header .chan { color: var(--ink); }
+  header .sp { flex: 1; }
+  #log { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 10px; }
+  .m { display: flex; gap: 9px; padding: 5px 0; align-items: flex-start; }
+  .av {
+    flex: 0 0 auto; width: 30px; height: 30px; display: grid; place-items: center;
+    font: 10px "Press Start 2P", monospace; color: #0b0a0d; border: 2px solid #000;
+  }
+  .mb { min-width: 0; flex: 1; }
+  .hd { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .nm { font-weight: 600; }
+  .bot {
+    font: 7px "Press Start 2P", monospace; padding: 2px 4px; background: var(--green); color: #0b0a0d;
+  }
+  .ts { color: var(--dim); font-size: 11px; }
+  .txt { white-space: pre-wrap; word-break: break-word; margin-top: 2px; }
+  .ping { color: var(--amber); background: rgba(255, 197, 61, .12); padding: 0 3px; }
+  .you-tag { color: var(--amber); }
+  .embed {
+    margin-top: 5px; border-left: 4px solid var(--c, var(--green)); background: var(--panel);
+    padding: 8px 10px; max-width: 440px; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px;
+  }
+  .embed > .btns { grid-column: 1 / -1; }
+  .embed h4 { margin: 0; grid-column: 1 / -1; font: 9px "Press Start 2P", monospace; color: var(--ink); line-height: 1.5; }
+  .embed p { margin: 0; grid-column: 1 / -1; color: #c9c2d3; }
+  .pix {
+    width: 64px; height: 64px; background: #0e0c12; border: 2px solid #000; display: grid; place-items: center;
+    font: 18px "Press Start 2P", monospace; color: var(--c, var(--green)); grid-row: span 2;
+    background-image: repeating-linear-gradient(45deg, #0e0c12 0 6px, #110f16 6px 12px);
+  }
+  .fields { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px 10px; font-size: 12px; }
+  .fields span b { color: var(--dim); font-weight: 400; margin-right: 6px; }
+  .foot { grid-column: 1 / -1; color: var(--dim); font-size: 11px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .btn {
+    font: 9px "Press Start 2P", monospace; color: var(--ink); background: var(--panel2);
+    border: 2px solid var(--line); padding: 7px 8px; cursor: pointer; touch-action: manipulation;
+  }
+  .btn:not(:disabled):hover { border-color: var(--amber); color: var(--amber); }
+  .btn.g { color: var(--green); border-color: var(--green); }
+  .btn.a { color: var(--amber); border-color: var(--amber); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn:focus-visible, .chip:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  footer {
+    flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    padding: 7px 10px; background: var(--panel); border-top: 2px solid #000;
+  }
+  .chip {
+    font: 12px "IBM Plex Mono", monospace; color: var(--green); background: transparent;
+    border: 1px solid var(--line); padding: 4px 8px; cursor: pointer; touch-action: manipulation;
+  }
+  .chip:not(:disabled):hover { border-color: var(--green); }
+  .chip:disabled { opacity: .4; cursor: default; }
+  .chip.spawn { color: var(--amber); }
+  .chip.spawn:not(:disabled):hover { border-color: var(--amber); }
+  .hint { color: var(--dim); font-size: 11px; margin-left: auto; }
+  @media (max-width: 520px) {
+    .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span>Demo server</span><span>›</span><span class="chan"># spawns</span>
+    <span class="sp"></span>
+    <span>fictional users · simulated spawns</span>
+  </header>
+  <div id="log" role="log" aria-live="polite" aria-label="Channel messages"></div>
+  <footer id="composer" aria-label="Commands">
+    <button class="chip spawn" id="spawnBtn" type="button">spawn a wild pokémon</button>
+    <button class="chip" type="button" data-cmd="mylist-make">/mylist Make</button>
+    <button class="chip" type="button" data-cmd="mylist-show">/mylist Show</button>
+    <button class="chip" type="button" data-cmd="mylist-clear">/mylist Clear</button>
+    <button class="chip" type="button" data-cmd="track">/track</button>
+    <span class="hint">taps only · buttons on messages do the rest</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const NAMES = [["Bulbasaur","Kanto","Common"],["Ivysaur","Kanto","Common"],["Venusaur","Kanto","Common"],["Charmander","Kanto","Common"],["Charmeleon","Kanto","Common"],["Charizard","Kanto","Common"],["Squirtle","Kanto","Common"],["Wartortle","Kanto","Common"],["Blastoise","Kanto","Common"],["Caterpie","Kanto","Common"],["Metapod","Kanto","Common"],["Butterfree","Kanto","Common"],["Weedle","Kanto","Common"],["Kakuna","Kanto","Common"],["Beedrill","Kanto","Common"],["Pidgey","Kanto","Common"],["Pidgeotto","Kanto","Common"],["Pidgeot","Kanto","Common"],["Rattata","Kanto","Common"],["Raticate","Kanto","Common"],["Spearow","Kanto","Common"],["Fearow","Kanto","Common"],["Ekans","Kanto","Common"],["Arbok","Kanto","Common"],["Pikachu","Kanto","Common"],["Raichu","Kanto","Common"],["Sandshrew","Kanto","Common"],["Sandslash","Kanto","Common"],["Nidoran♀","Kanto","Common"],["Nidorina","Kanto","Common"],["Nidoqueen","Kanto","Common"],["Nidoran♂","Kanto","Common"],["Nidorino","Kanto","Common"],["Nidoking","Kanto","Common"],["Clefairy","Kanto","Common"],["Clefable","Kanto","Common"],["Vulpix","Kanto","Common"],["Ninetales","Kanto","Common"],["Jigglypuff","Kanto","Common"],["Wigglytuff","Kanto","Common"],["Zubat","Kanto","Common"],["Golbat","Kanto","Common"],["Oddish","Kanto","Common"],["Gloom","Kanto","Common"],["Vileplume","Kanto","Common"],["Paras","Kanto","Common"],["Parasect","Kanto","Common"],["Venonat","Kanto","Common"],["Venomoth","Kanto","Common"],["Diglett","Kanto","Common"],["Dugtrio","Kanto","Common"],["Meowth","Kanto","Common"],["Persian","Kanto","Common"],["Psyduck","Kanto","Common"],["Golduck","Kanto","Common"],["Mankey","Kanto","Common"],["Primeape","Kanto","Common"],["Growlithe","Kanto","Common"],["Arcanine","Kanto","Common"],["Poliwag","Kanto","Common"],["Poliwhirl","Kanto","Common"],["Poliwrath","Kanto","Common"],["Abra","Kanto","Common"],["Kadabra","Kanto","Common"],["Alakazam","Kanto","Common"],["Machop","Kanto","Common"],["Machoke","Kanto","Common"],["Machamp","Kanto","Common"],["Bellsprout","Kanto","Common"],["Weepinbell","Kanto","Common"],["Victreebel","Kanto","Common"],["Tentacool","Kanto","Common"],["Tentacruel","Kanto","Common"],["Geodude","Kanto","Common"],["Graveler","Kanto","Common"],["Golem","Kanto","Common"],["Ponyta","Kanto","Common"],["Rapidash","Kanto","Common"],["Slowpoke","Kanto","Common"],["Slowbro","Kanto","Common"],["Magnemite","Kanto","Common"],["Magneton","Kanto","Common"],["Farfetch'd","Kanto","Common"],["Doduo","Kanto","Common"],["Dodrio","Kanto","Common"],["Seel","Kanto","Common"],["Dewgong","Kanto","Common"],["Grimer","Kanto","Common"],["Muk","Kanto","Common"],["Shellder","Kanto","Common"],["Cloyster","Kanto","Common"],["Gastly","Kanto","Common"],["Haunter","Kanto","Common"],["Gengar","Kanto","Common"],["Onix","Kanto","Common"],["Drowzee","Kanto","Common"],["Hypno","Kanto","Common"],["Krabby","Kanto","Common"],["Kingler","Kanto","Common"],["Voltorb","Kanto","Common"],["Electrode","Kanto","Common"],["Exeggcute","Kanto","Common"],["Exeggutor","Kanto","Common"],["Cubone","Kanto","Common"],["Marowak","Kanto","Common"],["Hitmonlee","Kanto","Common"],["Hitmonchan","Kanto","Common"],["Lickitung","Kanto","Common"],["Koffing","Kanto","Common"],["Weezing","Kanto","Common"],["Rhyhorn","Kanto","Common"],["Rhydon","Kanto","Common"],["Chansey","Kanto","Common"],["Tangela","Kanto","Common"],["Kangaskhan","Kanto","Common"],["Horsea","Kanto","Common"],["Seadra","Kanto","Common"],["Goldeen","Kanto","Common"],["Seaking","Kanto","Common"],["Staryu","Kanto","Common"],["Starmie","Kanto","Common"],["Mr. Mime","Kanto","Common"],["Scyther","Kanto","Common"],["Jynx","Kanto","Common"],["Electabuzz","Kanto","Common"],["Magmar","Kanto","Common"],["Pinsir","Kanto","Common"],["Tauros","Kanto","Common"],["Magikarp","Kanto","Common"],["Gyarados","Kanto","Common"],["Lapras","Kanto","Common"],["Ditto","Kanto","Common"],["Eevee","Kanto","Common"],["Vaporeon","Kanto","Common"],["Jolteon","Kanto","Common"],["Flareon","Kanto","Common"],["Porygon","Kanto","Common"],["Omanyte","Kanto","Common"],["Omastar","Kanto","Common"],["Kabuto","Kanto","Common"],["Kabutops","Kanto","Common"],["Aerodactyl","Kanto","Common"],["Snorlax","Kanto","Common"],["Articuno","Kanto","Legendary"],["Zapdos","Kanto","Legendary"],["Moltres","Kanto","Legendary"],["Dratini","Kanto","Common"],["Dragonair","Kanto","Common"],["Dragonite","Kanto","Common"],["Mewtwo","Kanto","Legendary"],["Mew","Kanto","Mythical"],["Chikorita","Johto","Common"],["Bayleef","Johto","Common"],["Meganium","Johto","Common"],["Cyndaquil","Johto","Common"],["Quilava","Johto","Common"],["Typhlosion","Johto","Common"],["Totodile","Johto","Common"],["Croconaw","Johto","Common"],["Feraligatr","Johto","Common"],["Sentret","Johto","Common"],["Furret","Johto","Common"],["Hoothoot","Johto","Common"],["Noctowl","Johto","Common"],["Ledyba","Johto","Common"],["Ledian","Johto","Common"],["Spinarak","Johto","Common"],["Ariados","Johto","Common"],["Crobat","Johto","Common"],["Chinchou","Johto","Common"],["Lanturn","Johto","Common"],["Pichu","Johto","Common"],["Cleffa","Johto","Common"],["Igglybuff","Johto","Common"],["Togepi","Johto","Common"],["Togetic","Johto","Common"],["Natu","Johto","Common"],["Xatu","Johto","Common"],["Mareep","Johto","Common"],["Flaaffy","Johto","Common"],["Ampharos","Johto","Common"],["Bellossom","Johto","Common"],["Marill","Johto","Common"],["Azumarill","Johto","Common"],["Sudowoodo","Johto","Common"],["Politoed","Johto","Common"],["Hoppip","Johto","Common"],["Skiploom","Johto","Common"],["Jumpluff","Johto","Common"],["Aipom","Johto","Common"],["Sunkern","Johto","Common"],["Sunflora","Johto","Common"],["Yanma","Johto","Common"],["Wooper","Johto","Common"],["Quagsire","Johto","Common"],["Espeon","Johto","Common"],["Umbreon","Johto","Common"],["Murkrow","Johto","Common"],["Slowking","Johto","Common"],["Misdreavus","Johto","Common"],["Unown","Johto","Common"],["Wobbuffet","Johto","Common"],["Girafarig","Johto","Common"],["Pineco","Johto","Common"],["Forretress","Johto","Common"],["Dunsparce","Johto","Common"],["Gligar","Johto","Common"],["Steelix","Johto","Common"],["Snubbull","Johto","Common"],["Granbull","Johto","Common"],["Qwilfish","Johto","Common"],["Scizor","Johto","Common"],["Shuckle","Johto","Common"],["Heracross","Johto","Common"],["Sneasel","Johto","Common"],["Teddiursa","Johto","Common"],["Ursaring","Johto","Common"],["Slugma","Johto","Common"],["Magcargo","Johto","Common"],["Swinub","Johto","Common"],["Piloswine","Johto","Common"],["Corsola","Johto","Common"],["Remoraid","Johto","Common"],["Octillery","Johto","Common"],["Delibird","Johto","Common"],["Mantine","Johto","Common"],["Skarmory","Johto","Common"],["Houndour","Johto","Common"],["Houndoom","Johto","Common"],["Kingdra","Johto","Common"],["Phanpy","Johto","Common"],["Donphan","Johto","Common"],["Porygon2","Johto","Common"],["Stantler","Johto","Common"],["Smeargle","Johto","Common"],["Tyrogue","Johto","Common"],["Hitmontop","Johto","Common"],["Smoochum","Johto","Common"],["Elekid","Johto","Common"],["Magby","Johto","Common"],["Miltank","Johto","Common"],["Blissey","Johto","Common"],["Raikou","Johto","Legendary"],["Entei","Johto","Legendary"],["Suicune","Johto","Legendary"],["Larvitar","Johto","Common"],["Pupitar","Johto","Common"],["Tyranitar","Johto","Common"],["Lugia","Johto","Legendary"],["Ho-Oh","Johto","Legendary"],["Celebi","Johto","Mythical"],["Treecko","Hoenn","Common"],["Grovyle","Hoenn","Common"],["Sceptile","Hoenn","Common"],["Torchic","Hoenn","Common"],["Combusken","Hoenn","Common"],["Blaziken","Hoenn","Common"],["Mudkip","Hoenn","Common"],["Marshtomp","Hoenn","Common"],["Swampert","Hoenn","Common"],["Poochyena","Hoenn","Common"],["Mightyena","Hoenn","Common"],["Zigzagoon","Hoenn","Common"],["Linoone","Hoenn","Common"],["Wurmple","Hoenn","Common"],["Silcoon","Hoenn","Common"],["Beautifly","Hoenn","Common"],["Cascoon","Hoenn","Common"],["Dustox","Hoenn","Common"],["Lotad","Hoenn","Common"],["Lombre","Hoenn","Common"],["Ludicolo","Hoenn","Common"],["Seedot","Hoenn","Common"],["Nuzleaf","Hoenn","Common"],["Shiftry","Hoenn","Common"],["Taillow","Hoenn","Common"],["Swellow","Hoenn","Common"],["Wingull","Hoenn","Common"],["Pelipper","Hoenn","Common"],["Ralts","Hoenn","Common"],["Kirlia","Hoenn","Common"],["Gardevoir","Hoenn","Common"],["Surskit","Hoenn","Common"],["Masquerain","Hoenn","Common"],["Shroomish","Hoenn","Common"],["Breloom","Hoenn","Common"],["Slakoth","Hoenn","Common"],["Vigoroth","Hoenn","Common"],["Slaking","Hoenn","Common"],["Nincada","Hoenn","Common"],["Ninjask","Hoenn","Common"],["Shedinja","Hoenn","Common"],["Whismur","Hoenn","Common"],["Loudred","Hoenn","Common"],["Exploud","Hoenn","Common"],["Makuhita","Hoenn","Common"],["Hariyama","Hoenn","Common"],["Azurill","Hoenn","Common"],["Nosepass","Hoenn","Common"],["Skitty","Hoenn","Common"],["Delcatty","Hoenn","Common"],["Sableye","Hoenn","Common"],["Mawile","Hoenn","Common"],["Aron","Hoenn","Common"],["Lairon","Hoenn","Common"],["Aggron","Hoenn","Common"],["Meditite","Hoenn","Common"],["Medicham","Hoenn","Common"],["Electrike","Hoenn","Common"],["Manectric","Hoenn","Common"],["Plusle","Hoenn","Common"],["Minun","Hoenn","Common"],["Volbeat","Hoenn","Common"],["Illumise","Hoenn","Common"],["Roselia","Hoenn","Common"],["Gulpin","Hoenn","Common"],["Swalot","Hoenn","Common"],["Carvanha","Hoenn","Common"],["Sharpedo","Hoenn","Common"],["Wailmer","Hoenn","Common"],["Wailord","Hoenn","Common"],["Numel","Hoenn","Common"],["Camerupt","Hoenn","Common"],["Torkoal","Hoenn","Common"],["Spoink","Hoenn","Common"],["Grumpig","Hoenn","Common"],["Spinda","Hoenn","Common"],["Trapinch","Hoenn","Common"],["Vibrava","Hoenn","Common"],["Flygon","Hoenn","Common"],["Cacnea","Hoenn","Common"],["Cacturne","Hoenn","Common"],["Swablu","Hoenn","Common"],["Altaria","Hoenn","Common"],["Zangoose","Hoenn","Common"],["Seviper","Hoenn","Common"],["Lunatone","Hoenn","Common"],["Solrock","Hoenn","Common"],["Barboach","Hoenn","Common"],["Whiscash","Hoenn","Common"],["Corphish","Hoenn","Common"],["Crawdaunt","Hoenn","Common"],["Baltoy","Hoenn","Common"],["Claydol","Hoenn","Common"],["Lileep","Hoenn","Common"],["Cradily","Hoenn","Common"],["Anorith","Hoenn","Common"],["Armaldo","Hoenn","Common"],["Feebas","Hoenn","Common"],["Milotic","Hoenn","Common"],["Castform","Hoenn","Common"],["Kecleon","Hoenn","Common"],["Shuppet","Hoenn","Common"],["Banette","Hoenn","Common"],["Duskull","Hoenn","Common"],["Dusclops","Hoenn","Common"],["Tropius","Hoenn","Common"],["Chimecho","Hoenn","Common"],["Absol","Hoenn","Common"],["Wynaut","Hoenn","Common"],["Snorunt","Hoenn","Common"],["Glalie","Hoenn","Common"],["Spheal","Hoenn","Common"],["Sealeo","Hoenn","Common"],["Walrein","Hoenn","Common"],["Clamperl","Hoenn","Common"],["Huntail","Hoenn","Common"],["Gorebyss","Hoenn","Common"],["Relicanth","Hoenn","Common"],["Luvdisc","Hoenn","Common"],["Bagon","Hoenn","Common"],["Shelgon","Hoenn","Common"],["Salamence","Hoenn","Common"],["Beldum","Hoenn","Common"],["Metang","Hoenn","Common"],["Metagross","Hoenn","Common"],["Regirock","Hoenn","Legendary"],["Regice","Hoenn","Legendary"],["Registeel","Hoenn","Legendary"],["Latias","Hoenn","Legendary"],["Latios","Hoenn","Legendary"],["Kyogre","Hoenn","Legendary"],["Groudon","Hoenn","Legendary"],["Rayquaza","Hoenn","Legendary"],["Jirachi","Hoenn","Mythical"],["Deoxys","Hoenn","Mythical"],["Turtwig","Sinnoh","Common"],["Grotle","Sinnoh","Common"],["Torterra","Sinnoh","Common"],["Chimchar","Sinnoh","Common"],["Monferno","Sinnoh","Common"],["Infernape","Sinnoh","Common"],["Piplup","Sinnoh","Common"],["Prinplup","Sinnoh","Common"],["Empoleon","Sinnoh","Common"],["Starly","Sinnoh","Common"],["Staravia","Sinnoh","Common"],["Staraptor","Sinnoh","Common"],["Bidoof","Sinnoh","Common"],["Bibarel","Sinnoh","Common"],["Kricketot","Sinnoh","Common"],["Kricketune","Sinnoh","Common"],["Shinx","Sinnoh","Common"],["Luxio","Sinnoh","Common"],["Luxray","Sinnoh","Common"],["Budew","Sinnoh","Common"],["Roserade","Sinnoh","Common"],["Cranidos","Sinnoh","Common"],["Rampardos","Sinnoh","Common"],["Shieldon","Sinnoh","Common"],["Bastiodon","Sinnoh","Common"],["Burmy","Sinnoh","Common"],["Wormadam","Sinnoh","Common"],["Mothim","Sinnoh","Common"],["Combee","Sinnoh","Common"],["Vespiquen","Sinnoh","Common"],["Pachirisu","Sinnoh","Common"],["Buizel","Sinnoh","Common"],["Floatzel","Sinnoh","Common"],["Cherubi","Sinnoh","Common"],["Cherrim","Sinnoh","Common"],["Shellos","Sinnoh","Common"],["Gastrodon","Sinnoh","Common"],["Ambipom","Sinnoh","Common"],["Drifloon","Sinnoh","Common"],["Drifblim","Sinnoh","Common"],["Buneary","Sinnoh","Common"],["Lopunny","Sinnoh","Common"],["Mismagius","Sinnoh","Common"],["Honchkrow","Sinnoh","Common"],["Glameow","Sinnoh","Common"],["Purugly","Sinnoh","Common"],["Chingling","Sinnoh","Common"],["Stunky","Sinnoh","Common"],["Skuntank","Sinnoh","Common"],["Bronzor","Sinnoh","Common"],["Bronzong","Sinnoh","Common"],["Bonsly","Sinnoh","Common"],["Mime Jr.","Sinnoh","Common"],["Happiny","Sinnoh","Common"],["Chatot","Sinnoh","Common"],["Spiritomb","Sinnoh","Common"],["Gible","Sinnoh","Common"],["Gabite","Sinnoh","Common"],["Garchomp","Sinnoh","Common"],["Munchlax","Sinnoh","Common"],["Riolu","Sinnoh","Common"],["Lucario","Sinnoh","Common"],["Hippopotas","Sinnoh","Common"],["Hippowdon","Sinnoh","Common"],["Skorupi","Sinnoh","Common"],["Drapion","Sinnoh","Common"],["Croagunk","Sinnoh","Common"],["Toxicroak","Sinnoh","Common"],["Carnivine","Sinnoh","Common"],["Finneon","Sinnoh","Common"],["Lumineon","Sinnoh","Common"],["Mantyke","Sinnoh","Common"],["Snover","Sinnoh","Common"],["Abomasnow","Sinnoh","Common"],["Weavile","Sinnoh","Common"],["Magnezone","Sinnoh","Common"],["Lickilicky","Sinnoh","Common"],["Rhyperior","Sinnoh","Common"],["Tangrowth","Sinnoh","Common"],["Electivire","Sinnoh","Common"],["Magmortar","Sinnoh","Common"],["Togekiss","Sinnoh","Common"],["Yanmega","Sinnoh","Common"],["Leafeon","Sinnoh","Common"],["Glaceon","Sinnoh","Common"],["Gliscor","Sinnoh","Common"],["Mamoswine","Sinnoh","Common"],["Porygon-Z","Sinnoh","Common"],["Gallade","Sinnoh","Common"],["Probopass","Sinnoh","Common"],["Dusknoir","Sinnoh","Common"],["Froslass","Sinnoh","Common"],["Rotom","Sinnoh","Common"],["Uxie","Sinnoh","Legendary"],["Mesprit","Sinnoh","Legendary"],["Azelf","Sinnoh","Legendary"],["Dialga","Sinnoh","Legendary"],["Palkia","Sinnoh","Legendary"],["Heatran","Sinnoh","Legendary"],["Regigigas","Sinnoh","Legendary"],["Giratina","Sinnoh","Legendary"],["Cresselia","Sinnoh","Legendary"],["Phione","Sinnoh","Mythical"],["Manaphy","Sinnoh","Mythical"],["Darkrai","Sinnoh","Mythical"],["Shaymin","Sinnoh","Mythical"],["Arceus","Sinnoh","Mythical"],["Victini","Unova","Mythical"],["Snivy","Unova","Common"],["Servine","Unova","Common"],["Serperior","Unova","Common"],["Tepig","Unova","Common"],["Pignite","Unova","Common"],["Emboar","Unova","Common"],["Oshawott","Unova","Common"],["Dewott","Unova","Common"],["Samurott","Unova","Common"],["Patrat","Unova","Common"],["Watchog","Unova","Common"],["Lillipup","Unova","Common"],["Herdier","Unova","Common"],["Stoutland","Unova","Common"],["Purrloin","Unova","Common"],["Liepard","Unova","Common"],["Pansage","Unova","Common"],["Simisage","Unova","Common"],["Pansear","Unova","Common"],["Simisear","Unova","Common"],["Panpour","Unova","Common"],["Simipour","Unova","Common"],["Munna","Unova","Common"],["Musharna","Unova","Common"],["Pidove","Unova","Common"],["Tranquill","Unova","Common"],["Unfezant","Unova","Common"],["Blitzle","Unova","Common"],["Zebstrika","Unova","Common"],["Roggenrola","Unova","Common"],["Boldore","Unova","Common"],["Gigalith","Unova","Common"],["Woobat","Unova","Common"],["Swoobat","Unova","Common"],["Drilbur","Unova","Common"],["Excadrill","Unova","Common"],["Audino","Unova","Common"],["Timburr","Unova","Common"],["Gurdurr","Unova","Common"],["Conkeldurr","Unova","Common"],["Tympole","Unova","Common"],["Palpitoad","Unova","Common"],["Seismitoad","Unova","Common"],["Throh","Unova","Common"],["Sawk","Unova","Common"],["Sewaddle","Unova","Common"],["Swadloon","Unova","Common"],["Leavanny","Unova","Common"],["Venipede","Unova","Common"],["Whirlipede","Unova","Common"],["Scolipede","Unova","Common"],["Cottonee","Unova","Common"],["Whimsicott","Unova","Common"],["Petilil","Unova","Common"],["Lilligant","Unova","Common"],["Basculin","Unova","Common"],["Sandile","Unova","Common"],["Krokorok","Unova","Common"],["Krookodile","Unova","Common"],["Darumaka","Unova","Common"],["Darmanitan","Unova","Common"],["Maractus","Unova","Common"],["Dwebble","Unova","Common"],["Crustle","Unova","Common"],["Scraggy","Unova","Common"],["Scrafty","Unova","Common"],["Sigilyph","Unova","Common"],["Yamask","Unova","Common"],["Cofagrigus","Unova","Common"],["Tirtouga","Unova","Common"],["Carracosta","Unova","Common"],["Archen","Unova","Common"],["Archeops","Unova","Common"],["Trubbish","Unova","Common"],["Garbodor","Unova","Common"],["Zorua","Unova","Common"],["Zoroark","Unova","Common"],["Minccino","Unova","Common"],["Cinccino","Unova","Common"],["Gothita","Unova","Common"],["Gothorita","Unova","Common"],["Gothitelle","Unova","Common"],["Solosis","Unova","Common"],["Duosion","Unova","Common"],["Reuniclus","Unova","Common"],["Ducklett","Unova","Common"],["Swanna","Unova","Common"],["Vanillite","Unova","Common"],["Vanillish","Unova","Common"],["Vanilluxe","Unova","Common"],["Deerling","Unova","Common"],["Sawsbuck","Unova","Common"],["Emolga","Unova","Common"],["Karrablast","Unova","Common"],["Escavalier","Unova","Common"],["Foongus","Unova","Common"],["Amoonguss","Unova","Common"],["Frillish","Unova","Common"],["Jellicent","Unova","Common"],["Alomomola","Unova","Common"],["Joltik","Unova","Common"],["Galvantula","Unova","Common"],["Ferroseed","Unova","Common"],["Ferrothorn","Unova","Common"],["Klink","Unova","Common"],["Klang","Unova","Common"],["Klinklang","Unova","Common"],["Tynamo","Unova","Common"],["Eelektrik","Unova","Common"],["Eelektross","Unova","Common"],["Elgyem","Unova","Common"],["Beheeyem","Unova","Common"],["Litwick","Unova","Common"],["Lampent","Unova","Common"],["Chandelure","Unova","Common"],["Axew","Unova","Common"],["Fraxure","Unova","Common"],["Haxorus","Unova","Common"],["Cubchoo","Unova","Common"],["Beartic","Unova","Common"],["Cryogonal","Unova","Common"],["Shelmet","Unova","Common"],["Accelgor","Unova","Common"],["Stunfisk","Unova","Common"],["Mienfoo","Unova","Common"],["Mienshao","Unova","Common"],["Druddigon","Unova","Common"],["Golett","Unova","Common"],["Golurk","Unova","Common"],["Pawniard","Unova","Common"],["Bisharp","Unova","Common"],["Bouffalant","Unova","Common"],["Rufflet","Unova","Common"],["Braviary","Unova","Common"],["Vullaby","Unova","Common"],["Mandibuzz","Unova","Common"],["Heatmor","Unova","Common"],["Durant","Unova","Common"],["Deino","Unova","Common"],["Zweilous","Unova","Common"],["Hydreigon","Unova","Common"],["Larvesta","Unova","Common"],["Volcarona","Unova","Common"],["Cobalion","Unova","Legendary"],["Terrakion","Unova","Legendary"],["Virizion","Unova","Legendary"],["Tornadus","Unova","Legendary"],["Thundurus","Unova","Legendary"],["Reshiram","Unova","Legendary"],["Zekrom","Unova","Legendary"],["Landorus","Unova","Legendary"],["Kyurem","Unova","Legendary"],["Keldeo","Unova","Mythical"],["Meloetta","Unova","Mythical"],["Genesect","Unova","Mythical"],["Chespin","Kalos","Common"],["Quilladin","Kalos","Common"],["Chesnaught","Kalos","Common"],["Fennekin","Kalos","Common"],["Braixen","Kalos","Common"],["Delphox","Kalos","Common"],["Froakie","Kalos","Common"],["Frogadier","Kalos","Common"],["Greninja","Kalos","Common"],["Bunnelby","Kalos","Common"],["Diggersby","Kalos","Common"],["Fletchling","Kalos","Common"],["Fletchinder","Kalos","Common"],["Talonflame","Kalos","Common"],["Scatterbug","Kalos","Common"],["Spewpa","Kalos","Common"],["Vivillon","Kalos","Common"],["Litleo","Kalos","Common"],["Pyroar","Kalos","Common"],["Flabébé","Kalos","Common"],["Floette","Kalos","Common"],["Florges","Kalos","Common"],["Skiddo","Kalos","Common"],["Gogoat","Kalos","Common"],["Pancham","Kalos","Common"],["Pangoro","Kalos","Common"],["Furfrou","Kalos","Common"],["Espurr","Kalos","Common"],["Meowstic","Kalos","Common"],["Honedge","Kalos","Common"],["Doublade","Kalos","Common"],["Aegislash","Kalos","Common"],["Spritzee","Kalos","Common"],["Aromatisse","Kalos","Common"],["Swirlix","Kalos","Common"],["Slurpuff","Kalos","Common"],["Inkay","Kalos","Common"],["Malamar","Kalos","Common"],["Binacle","Kalos","Common"],["Barbaracle","Kalos","Common"],["Skrelp","Kalos","Common"],["Dragalge","Kalos","Common"],["Clauncher","Kalos","Common"],["Clawitzer","Kalos","Common"],["Helioptile","Kalos","Common"],["Heliolisk","Kalos","Common"],["Tyrunt","Kalos","Common"],["Tyrantrum","Kalos","Common"],["Amaura","Kalos","Common"],["Aurorus","Kalos","Common"],["Sylveon","Kalos","Common"],["Hawlucha","Kalos","Common"],["Dedenne","Kalos","Common"],["Carbink","Kalos","Common"],["Goomy","Kalos","Common"],["Sliggoo","Kalos","Common"],["Goodra","Kalos","Common"],["Klefki","Kalos","Common"],["Phantump","Kalos","Common"],["Trevenant","Kalos","Common"],["Pumpkaboo","Kalos","Common"],["Gourgeist","Kalos","Common"],["Bergmite","Kalos","Common"],["Avalugg","Kalos","Common"],["Noibat","Kalos","Common"],["Noivern","Kalos","Common"],["Xerneas","Kalos","Legendary"],["Yveltal","Kalos","Legendary"],["Zygarde","Kalos","Legendary"],["Diancie","Kalos","Mythical"],["Hoopa","Kalos","Mythical"],["Volcanion","Kalos","Mythical"],["Rowlet","Alola","Common"],["Dartrix","Alola","Common"],["Decidueye","Alola","Common"],["Litten","Alola","Common"],["Torracat","Alola","Common"],["Incineroar","Alola","Common"],["Popplio","Alola","Common"],["Brionne","Alola","Common"],["Primarina","Alola","Common"],["Pikipek","Alola","Common"],["Trumbeak","Alola","Common"],["Toucannon","Alola","Common"],["Yungoos","Alola","Common"],["Gumshoos","Alola","Common"],["Grubbin","Alola","Common"],["Charjabug","Alola","Common"],["Vikavolt","Alola","Common"],["Crabrawler","Alola","Common"],["Crabominable","Alola","Common"],["Oricorio","Alola","Common"],["Cutiefly","Alola","Common"],["Ribombee","Alola","Common"],["Rockruff","Alola","Common"],["Lycanroc","Alola","Common"],["Wishiwashi","Alola","Common"],["Mareanie","Alola","Common"],["Toxapex","Alola","Common"],["Mudbray","Alola","Common"],["Mudsdale","Alola","Common"],["Dewpider","Alola","Common"],["Araquanid","Alola","Common"],["Fomantis","Alola","Common"],["Lurantis","Alola","Common"],["Morelull","Alola","Common"],["Shiinotic","Alola","Common"],["Salandit","Alola","Common"],["Salazzle","Alola","Common"],["Stufful","Alola","Common"],["Bewear","Alola","Common"],["Bounsweet","Alola","Common"],["Steenee","Alola","Common"],["Tsareena","Alola","Common"],["Comfey","Alola","Common"],["Oranguru","Alola","Common"],["Passimian","Alola","Common"],["Wimpod","Alola","Common"],["Golisopod","Alola","Common"],["Sandygast","Alola","Common"],["Palossand","Alola","Common"],["Pyukumuku","Alola","Common"],["Type: Null","Alola","Legendary"],["Silvally","Alola","Legendary"],["Minior","Alola","Common"],["Komala","Alola","Common"],["Turtonator","Alola","Common"],["Togedemaru","Alola","Common"],["Mimikyu","Alola","Common"],["Bruxish","Alola","Common"],["Drampa","Alola","Common"],["Dhelmise","Alola","Common"],["Jangmo-o","Alola","Common"],["Hakamo-o","Alola","Common"],["Kommo-o","Alola","Common"],["Tapu Koko","Alola","Legendary"],["Tapu Lele","Alola","Legendary"],["Tapu Bulu","Alola","Legendary"],["Tapu Fini","Alola","Legendary"],["Cosmog","Alola","Legendary"],["Cosmoem","Alola","Legendary"],["Solgaleo","Alola","Legendary"],["Lunala","Alola","Legendary"],["Nihilego","Alola","Ultra Beast"],["Buzzwole","Alola","Ultra Beast"],["Pheromosa","Alola","Ultra Beast"],["Xurkitree","Alola","Ultra Beast"],["Celesteela","Alola","Ultra Beast"],["Kartana","Alola","Ultra Beast"],["Guzzlord","Alola","Ultra Beast"],["Necrozma","Alola","Legendary"],["Magearna","Alola","Mythical"],["Marshadow","Alola","Mythical"],["Poipole","Alola","Ultra Beast"],["Naganadel","Alola","Ultra Beast"],["Stakataka","Alola","Ultra Beast"],["Blacephalon","Alola","Ultra Beast"],["Zeraora","Alola","Mythical"],["Meltan","Alola","Mythical"],["Melmetal","Alola","Mythical"],["Grookey","Galar","Common"],["Thwackey","Galar","Common"],["Rillaboom","Galar","Common"],["Scorbunny","Galar","Common"],["Raboot","Galar","Common"],["Cinderace","Galar","Common"],["Sobble","Galar","Common"],["Drizzile","Galar","Common"],["Inteleon","Galar","Common"],["Skwovet","Galar","Common"],["Greedent","Galar","Common"],["Rookidee","Galar","Common"],["Corvisquire","Galar","Common"],["Corviknight","Galar","Common"],["Blipbug","Galar","Common"],["Dottler","Galar","Common"],["Orbeetle","Galar","Common"],["Nickit","Galar","Common"],["Thievul","Galar","Common"],["Gossifleur","Galar","Common"],["Eldegoss","Galar","Common"],["Wooloo","Galar","Common"],["Dubwool","Galar","Common"],["Chewtle","Galar","Common"],["Drednaw","Galar","Common"],["Yamper","Galar","Common"],["Boltund","Galar","Common"],["Rolycoly","Galar","Common"],["Carkol","Galar","Common"],["Coalossal","Galar","Common"],["Applin","Galar","Common"],["Flapple","Galar","Common"],["Appletun","Galar","Common"],["Silicobra","Galar","Common"],["Sandaconda","Galar","Common"],["Cramorant","Galar","Common"],["Arrokuda","Galar","Common"],["Barraskewda","Galar","Common"],["Toxel","Galar","Common"],["Toxtricity","Galar","Common"],["Sizzlipede","Galar","Common"],["Centiskorch","Galar","Common"],["Clobbopus","Galar","Common"],["Grapploct","Galar","Common"],["Sinistea","Galar","Common"],["Polteageist","Galar","Common"],["Hatenna","Galar","Common"],["Hattrem","Galar","Common"],["Hatterene","Galar","Common"],["Impidimp","Galar","Common"],["Morgrem","Galar","Common"],["Grimmsnarl","Galar","Common"],["Obstagoon","Galar","Common"],["Perrserker","Galar","Common"],["Cursola","Galar","Common"],["Sirfetch'd","Galar","Common"],["Mr. Rime","Galar","Common"],["Runerigus","Galar","Common"],["Milcery","Galar","Common"],["Alcremie","Galar","Common"],["Falinks","Galar","Common"],["Pincurchin","Galar","Common"],["Snom","Galar","Common"],["Frosmoth","Galar","Common"],["Stonjourner","Galar","Common"],["Eiscue","Galar","Common"],["Indeedee","Galar","Common"],["Morpeko","Galar","Common"],["Cufant","Galar","Common"],["Copperajah","Galar","Common"],["Dracozolt","Galar","Common"],["Arctozolt","Galar","Common"],["Dracovish","Galar","Common"],["Arctovish","Galar","Common"],["Duraludon","Galar","Common"],["Dreepy","Galar","Common"],["Drakloak","Galar","Common"],["Dragapult","Galar","Common"],["Zacian","Galar","Legendary"],["Zamazenta","Galar","Legendary"],["Eternatus","Galar","Legendary"],["Kubfu","Galar","Legendary"],["Urshifu","Galar","Legendary"],["Zarude","Galar","Mythical"],["Regieleki","Galar","Legendary"],["Regidrago","Galar","Legendary"],["Glastrier","Galar","Legendary"],["Spectrier","Galar","Legendary"],["Calyrex","Galar","Legendary"],["Wyrdeer","Hisui","Common"],["Kleavor","Hisui","Common"],["Ursaluna","Hisui","Common"],["Basculegion","Hisui","Common"],["Sneasler","Hisui","Common"],["Overqwil","Hisui","Common"],["Enamorus","Hisui","Legendary"]];
+const SPECIAL = ["Alolan", "Galarian", "Snowy", "Rainy", "Sunny", "Normal", "Baile", "Pom-pom", "Pa'u", "Sensu", "Hisuian", "Origin"];
+
+  // ---------- fictional server ----------
+  // Fictional people and a fictional server. Pokémon names come from the bot's own list.
+  const KI = { name: "Ki", color: "#5cf2b0", bot: true };
+  const SPAWNER = { name: "Spawner", color: "#b48cff", bot: true };
+  const USERS = {
+    you:  { name: "you",  color: "#ffc53d", list: null, track: true, mentionNoList: false },
+    mira: { name: "Mira", color: "#ff9ac2", list: ["Pikachu", "Eevee", "Gengar", "Dratini", "Alolan Raichu"], track: true, mentionNoList: false },
+    juno: { name: "Juno", color: "#9dff7a", list: ["Galarian Ponyta", "Zacian", "Mr. Mime"], track: false, mentionNoList: false },
+    tobi: { name: "Tobi", color: "#7aa7ff", list: ["Bulbasaur", "Ditto", "Mime Jr.", "Ponyta"], track: true, mentionNoList: false },
+  };
+  // Names the viewer can "own" through /mylist Make, shown as three pokédex pages.
+  const OWNED_PAGES = [
+    ["Bulbasaur", "Ditto", "Pikachu", "Eevee"],
+    ["Dratini", "Gengar", "Mr. Mime", "Ponyta"],
+    ["Alolan Raichu", "Zacian", "Mime Jr.", "Galarian Ponyta"],
+  ];
+  // Spawns the demo can roll.
+  const POOL = ["Pikachu", "Eevee", "Alolan Raichu", "Galarian Ponyta", "Dratini", "Zacian",
+                "Mr. Mime", "Gengar", "Bulbasaur", "Ditto", "Mime Jr.", "Ponyta"];
+
+  // ---------- helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const log = $("log");
+  const spawnBtn = $("spawnBtn");
+  const BY_NAME = new Map(NAMES.map(([n, region, tier]) => [n, { region, tier }]));
+  const chars = (s) => Array.from(s);
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const scroll = () => { log.scrollTop = log.scrollHeight; };
+  const clock = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+
+  // Text with "@Name" tokens highlighted as pings.
+  function fillText(el, text) {
+    el.textContent = "";
+    for (const part of text.split(/(@[A-Za-z]+)/)) {
+      if (!part) continue;
+      const who = part.startsWith("@") ? Object.values(USERS).find((u) => u.name === part.slice(1)) : null;
+      if (who) {
+        const s = document.createElement("span");
+        s.className = who === USERS.you ? "ping you-tag" : "ping";
+        s.textContent = part;
+        el.appendChild(s);
+      } else {
+        el.appendChild(document.createTextNode(part));
+      }
+    }
+  }
+
+  // One channel message: avatar, name, optional BOT tag, and a body element.
+  function row(author, body) {
+    const m = document.createElement("div");
+    m.className = "m";
+    const av = document.createElement("div");
+    av.className = "av";
+    av.style.background = author.color;
+    av.setAttribute("aria-hidden", "true");
+    av.textContent = author.name[0].toUpperCase();
+    const mb = document.createElement("div");
+    mb.className = "mb";
+    const hd = document.createElement("div");
+    hd.className = "hd";
+    const nm = document.createElement("span");
+    nm.className = "nm";
+    nm.textContent = author.name;
+    hd.appendChild(nm);
+    if (author.bot) {
+      const t = document.createElement("span");
+      t.className = "bot";
+      t.textContent = "BOT";
+      hd.appendChild(t);
+    }
+    const ts = document.createElement("span");
+    ts.className = "ts";
+    ts.textContent = clock();
+    hd.appendChild(ts);
+    mb.append(hd, body);
+    m.append(av, mb);
+    log.appendChild(m);
+    scroll();
+    return mb;
+  }
+
+  function say(author, text) {
+    const p = document.createElement("div");
+    p.className = "txt";
+    fillText(p, text);
+    row(author, p);
+    return p;
+  }
+
+  function button(label, cls, onClick) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn " + (cls || "");
+    b.textContent = label;
+    if (onClick) b.addEventListener("click", onClick);
+    return b;
+  }
+
+  function buttonRow(parent, buttons) {
+    const r = document.createElement("div");
+    r.className = "btns";
+    r.append(...buttons);
+    parent.appendChild(r);
+    return r;
+  }
+
+  // Resolves with the id of whichever button is clicked first, then disables all of them.
+  function choose(parent, options) {
+    return new Promise((resolve) => {
+      const bs = options.map((o) => button(o.label, o.cls, () => {
+        bs.forEach((b) => (b.disabled = true));
+        resolve(o.id);
+      }));
+      buttonRow(parent, bs);
+      scroll();
+    });
+  }
+
+  // Embed: coloured left edge, title, description, pixel placeholder, fields, footer.
+  function embed(parent, opts) {
+    const e = document.createElement("div");
+    e.className = "embed";
+    e.style.setProperty("--c", opts.color || "#5cf2b0");
+    const h = document.createElement("h4");
+    h.textContent = opts.title || "";
+    if (!opts.title) h.style.display = "none";
+    e.appendChild(h);
+    if (opts.pix) { const p = document.createElement("div"); p.className = "pix"; p.textContent = opts.pix; p.setAttribute("aria-hidden", "true"); e.appendChild(p); }
+    const dsc = document.createElement("p");
+    dsc.textContent = opts.desc || "";
+    if (!opts.desc) dsc.style.display = "none";
+    e.appendChild(dsc);
+    const f = document.createElement("div");
+    f.className = "fields";
+    e.appendChild(f);
+    if (opts.fields) setFields(f, opts.fields);
+    const ft = document.createElement("div");
+    ft.className = "foot";
+    ft.textContent = opts.footer || "";
+    if (!opts.footer) ft.style.display = "none";
+    e.appendChild(ft);
+    parent.appendChild(e);
+    scroll();
+    return { el: e, fields: f, foot: ft, title: h, desc: dsc };
+  }
+  function setFields(container, fields) {
+    container.textContent = "";
+    for (const [k, v] of fields) {
+      const s = document.createElement("span");
+      const b = document.createElement("b");
+      b.textContent = k;
+      s.append(b, document.createTextNode(v));
+      container.appendChild(s);
+    }
+  }
+
+  // ---------- hints and identification ----------
+  // The spawn reveals letters over three hints. Forms ("Alolan", "Galarian") are shown in full.
+  function makeHints(name) {
+    let form = "", base = name;
+    const sp = name.indexOf(" ");
+    if (sp > 0 && SPECIAL.includes(name.slice(0, sp))) { form = name.slice(0, sp); base = name.slice(sp + 1); }
+    const cs = chars(base);
+    const order = shuffle(cs.map((c, i) => (c === " " ? -1 : i)).filter((i) => i >= 0));
+    return [0.3, 0.6, 1].map((f) => {
+      const keep = new Set(order.slice(0, Math.max(1, Math.round(order.length * f))));
+      const masked = cs.map((c, i) => (c === " " ? " " : keep.has(i) ? c : "_")).join("");
+      return `The pokémon is ${form ? form + " " : ""}${masked}.`;
+    });
+  }
+
+  // Port of what_pokemon() from cogs/catching.py. Feed it one hint at a time.
+  // Returns { done: false, candidates } while more than one name fits, else { done: true, name }.
+  function feedHint(st, hint) {
+    let toks = hint.split(" ");
+    toks = toks.slice(toks.indexOf("is") + 1);
+    toks[toks.length - 1] = toks[toks.length - 1].replace(/\.$/, "");
+    toks = toks.map((t) => t.replace(/\\/g, ""));
+
+    // Special forms: a fully shown first word that is in the form list, e.g. "Alolan". A partly
+    // masked word is never a form, otherwise "_a__" from "Tapu" would wrongly match "Pa'u".
+    if (toks.length > 1 && !toks[0].includes("_")) {
+      const pre = toks[0];
+      const form = SPECIAL.find((f) => f === pre);
+      if (form) { st.form = form; toks = toks.slice(1); }
+    }
+
+    const pattern = toks.join(" ");
+    const pc = chars(pattern);
+    if (st.possible === null) {
+      st.possible = NAMES.map((n) => n[0]).filter((n) => chars(n).length === pc.length);
+    }
+    st.possible = st.possible.filter((n) => {
+      const nc = chars(n);
+      return pc.every((c, i) => c === "_" || nc[i] === c);
+    });
+
+    if (st.possible.length > 1) return { done: false, candidates: st.possible.slice() };
+    if (st.possible.length === 1) return { done: true, name: (st.form ? st.form + " " : "") + st.possible[0], base: st.possible[0] };
+    return { done: true, name: null };
+  }
+
+  // ---------- user list ----------
+  const PAGE = 25;
+  function listEmbedPages(user) {
+    const list = user.list;
+    const pages = [];
+    const desc = user.track
+      ? "Ki will mention you if a pokemon from this list spawns"
+      : "***Ki is not tracking your uncaught pokemon***. Use the /track command to start tracking";
+    for (let start = 0; start < list.length; start += PAGE) {
+      const end = Math.min(list.length, start + PAGE);
+      const fields = list.slice(start, end).map((n, i) => [String(start + i + 1), n]);
+      pages.push({
+        title: start === 0 ? `${user.name}'s List` : null,
+        desc: start === 0 ? desc : null,
+        fields,
+        footer: `Showing entries ${start + 1}-${end} out of ${list.length}`,
+      });
+    }
+    return pages;
+  }
+
+  function showPage(view, pages, i) {
+    const p = pages[i];
+    view.title.textContent = p.title || "";
+    view.title.style.display = p.title ? "" : "none";
+    view.desc.textContent = p.desc || "";
+    view.desc.style.display = p.desc ? "" : "none";
+    view.foot.textContent = p.footer;
+    setFields(view.fields, p.fields);
+  }
+
+  // ---------- commands ----------
+  let busyMake = false;
+
+  function echo(cmd) {
+    say(USERS.you, cmd);
+  }
+
+  async function cmdMakeList() {
+    if (busyMake) return;
+    busyMake = true;
+    echo("/mylist manage: Make");
+    const you = USERS.you;
+    you.list = null;   // the original clears the old list first
+    await sleep(300);
+    say(KI, "Open list of pokemon");
+    const stored = [];
+    for (let page = 0; page < OWNED_PAGES.length; page++) {
+      const names = OWNED_PAGES[page];
+      stored.push(...names);
+      const last = page === OWNED_PAGES.length - 1;
+      const view = embed(log, {
+        color: "#ffc53d",
+        title: `Pokédex · page ${page + 1} of ${OWNED_PAGES.length}`,
+        fields: names.map((n, i) => [String(page * names.length + i + 1), n]),
+      });
+      await choose(view.el, [{ id: "next", label: last ? "save my list" : "next page", cls: last ? "g" : "" }]);
+    }
+    you.list = stored.slice();
+    await sleep(300);
+    say(KI, `${you.name}, your list of pokemon is successfully stored`);
+    busyMake = false;
+  }
+
+  function cmdShowList() {
+    echo("/mylist manage: Show");
+    const you = USERS.you;
+    if (!you.list || you.list.length === 0) { say(KI, "List is empty"); return; }
+    say(KI, `@you your list is`);
+    const pages = listEmbedPages(you);
+    let i = 0;
+    const view = embed(log, { color: "#5cf2b0", fields: [] });
+    showPage(view, pages, 0);
+    const prev = button("◀️", "", () => { if (i > 0) { i--; showPage(view, pages, i); } });
+    const next = button("▶️", "", () => { if (i < pages.length - 1) { i++; showPage(view, pages, i); } });
+    buttonRow(view.el, [prev, next]);
+    scroll();
+  }
+
+  function cmdClearList() {
+    echo("/mylist manage: Clear");
+    say(KI, "Clearing list...");
+    USERS.you.list = null;
+    say(KI, "you your list is cleared");
+  }
+
+  function cmdTrack() {
+    echo("/track");
+    USERS.you.track = true;
+    say(KI, "Ki is now tracking your uncaught pokemon @you.");
+  }
+
+  // ---------- spawns ----------
+  let spawning = false;
+
+  async function spawn(forced) {
+    if (spawning) return;
+    spawning = true;
+    spawnBtn.disabled = true;
+
+    const name = forced || pick(POOL);
+    const hints = makeHints(name);
+    const spawnView = embed(log, {
+      color: "#b48cff",
+      title: "A wild pokémon has appeared!",
+      pix: "?",
+      desc: "Type `catch <name>` to claim it.",
+    });
+    scroll();
+    await sleep(700);
+
+    // Hint loop: Ki keeps reading hints until one name fits.
+    const st = { possible: null, form: "" };
+    let guess = null, base = null;
+    for (const hint of hints) {
+      say(SPAWNER, hint);
+      await sleep(450);
+      const r = feedHint(st, hint);
+      if (r.done) { guess = r.name; base = r.base; break; }
+      const shown = r.candidates.slice(0, 12).join(", ") + (r.candidates.length > 12 ? ` …+${r.candidates.length - 12}` : "");
+      say(KI, `Found ${r.candidates.length} possible pokémon`);
+      say(KI, shown);
+      await sleep(900);   // the original waits 8 s before asking again
+    }
+
+    if (!guess) {
+      say(KI, "Could not place this one. Session terminated");
+      spawning = false; spawnBtn.disabled = false;
+      return;
+    }
+
+    const info = BY_NAME.get(base) || {};
+    embed(log, {
+      color: "#5cf2b0",
+      title: `Identified: ${guess}`,
+      pix: guess[0],
+      desc: `Region ${info.region || "?"} · tier ${info.tier || "?"}`,
+    });
+    await sleep(400);
+
+    // Reminder for users without a list (the original does this in its except branch).
+    if (USERS.you.list === null) {
+      const u = USERS.you;
+      const pingText = u.mentionNoList ? `@you you haven't made a list yet! Use the /mylist command to make one.` : `you haven't made a list yet! Use the /mylist command to make one.`;
+      const body = say(KI, pingText);
+      buttonRow(body, [button(u.mentionNoList ? "Don't mention me" : "mention me", "a", () => {
+        u.mentionNoList = !u.mentionNoList;
+        say(KI, `Ki will ${u.mentionNoList ? "" : "not "}mention you if you happen to have no list saved`);
+      })]);
+      await sleep(400);
+    }
+
+    // Who wants it: users whose list has the name and who are tracking uncaught pokemon.
+    const pinged = Object.entries(USERS).filter(([, u]) => u.list && u.list.includes(guess) && u.track);
+    if (pinged.length === 0) {
+      say(KI, `Nobody here has ${guess} on their list, so Ki is leaving it alone.`);
+      spawning = false; spawnBtn.disabled = false;
+      return;
+    }
+
+    const names = pinged.map(([, u]) => (u === USERS.you ? "@you" : `@${u.name}`));
+    const body = say(KI, `Wait ${names.join(", ")} need${pinged.length === 1 ? "s" : ""} to catch this`);
+    const stopTrack = button("Don't track my uncaught pokémon", "a", () => {
+      USERS.you.track = false;
+      stopTrack.disabled = true;
+      say(KI, "Ki is not tracking your uncaught pokemon anymore @you.\nUse the /track command to start tracking again");
+    });
+    buttonRow(body, [stopTrack]);
+    await sleep(300);
+
+    // The catch itself. In the bot, the spawner posts "Congratulations" and Ki updates the list.
+    const options = pinged.map(([id, u]) => ({ id, label: `${u.name} catches it`, cls: "g" }));
+    options.push({ id: "none", label: "let it go", cls: "" });
+    const who = await choose(body, options);
+
+    if (who === "none") {
+      say(KI, "Session terminated");
+    } else {
+      const u = USERS[who];
+      say(SPAWNER, `Congratulations ${u === USERS.you ? "@you" : "@" + u.name}! You caught a ${guess}!`);
+      await sleep(300);
+      const idx = u.list.indexOf(guess);
+      if (idx >= 0) u.list.splice(idx, 1);
+      say(KI, `${u === USERS.you ? "@you" : "@" + u.name}, ${guess} has been removed from your list`);
+    }
+
+    spawning = false;
+    spawnBtn.disabled = false;
+  }
+
+  // ---------- wiring ----------
+  spawnBtn.addEventListener("click", () => spawn());
+  document.querySelectorAll("[data-cmd]").forEach((b) => {
+    b.addEventListener("click", () => {
+      const c = b.dataset.cmd;
+      if (c === "mylist-make") cmdMakeList();
+      else if (c === "mylist-show") cmdShowList();
+      else if (c === "mylist-clear") cmdClearList();
+      else if (c === "track") cmdTrack();
+    });
+  });
+
+  (async () => {
+    say(KI, "Ki is online and watching #spawns. This demo server and its people are made up, and the spawns are simulated. The name matching is the bot's own logic.");
+    await sleep(900);
+    await spawn("Pikachu");
+  })();
+})();
+</script>
+</body>
+</html>

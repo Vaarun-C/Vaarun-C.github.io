@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NL2SQL Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0a0d; --bg2: #121017; --panel: #17141d; --line: #2b2634; --line2: #221e2b;
+  --ink: #ece6d6; --dim: #8d869a; --amber: #ffc53d; --green: #5cf2b0; --red: #ff5c6c; --blue: #8fb8ff; --pink: #ff8fd1;
+  --pixel: "Press Start 2P", monospace; --term: "VT323", monospace; --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 12px/1.5 var(--mono); overflow: hidden; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.wrap { height: 100%; display: grid; grid-template-rows: auto auto auto 1fr; min-height: 0; }
+
+.bar { display: flex; align-items: center; gap: 7px; padding: 6px 9px; border-bottom: 1px solid var(--line); background: var(--bg2); flex-wrap: wrap; }
+.title { font: 9px var(--pixel); color: var(--amber); letter-spacing: .4px; white-space: nowrap; }
+.sp { flex: 1; }
+select { background: #0f0d13; border: 1px solid var(--line); padding: 4px 4px; max-width: 100%; }
+.btn { background: #1a1622; border: 1px solid var(--line); padding: 4px 9px; white-space: nowrap; }
+.btn:hover:not(:disabled) { border-color: var(--dim); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.primary { border-color: #4f7d68; color: var(--green); }
+.btn:focus-visible, select:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+
+.q { padding: 6px 9px; border-bottom: 1px solid var(--line); display: flex; gap: 7px; align-items: baseline; }
+.q .lbl { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+.q .txt { color: var(--ink); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tabs { display: flex; gap: 0; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; background: var(--bg); }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: 1 0 auto; background: transparent; border: 0; border-right: 1px solid var(--line2); padding: 6px 7px; color: var(--dim); font-size: 11px; white-space: nowrap; position: relative; }
+.tab .num { color: var(--line); margin-right: 3px; }
+.tab.done { color: var(--ink); }
+.tab.done .num { color: var(--green); }
+.tab.cur { color: var(--amber); background: #1d1729; }
+.tab.cur::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--amber); }
+.tab.err .num { color: var(--red); }
+
+.panel { overflow: auto; min-height: 0; padding: 9px 10px 12px; }
+.panel h3 { margin: 0 0 6px; font: 9px var(--pixel); color: var(--green); letter-spacing: .3px; line-height: 1.6; }
+.panel p { margin: 4px 0; color: var(--ink); }
+.dim { color: var(--dim); }
+.box { background: #0f0d13; border: 1px solid var(--line); border-radius: 2px; padding: 7px 9px; margin: 6px 0; white-space: pre-wrap; word-break: break-word; overflow-x: auto; font-size: 11px; line-height: 1.5; }
+.kw { color: var(--blue); font-weight: 600; }
+.str { color: var(--amber); }
+.num2 { color: var(--pink); }
+mark.inj { background: #2d2a10; color: var(--amber); padding: 0 2px; }
+mark.bad { background: #3a1419; color: var(--red); padding: 0 2px; }
+.ok { color: var(--green); } .no { color: var(--red); } .warn { color: var(--amber); }
+.check { display: grid; grid-template-columns: 16px 1fr; gap: 4px; margin: 3px 0; }
+.check b { font-weight: 400; }
+.hit { display: grid; grid-template-columns: 96px 1fr; gap: 6px; padding: 3px 0; border-bottom: 1px dashed var(--line2); font-size: 11px; }
+.hit .k { color: var(--pink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+table.res { border-collapse: collapse; width: 100%; font-size: 11px; margin-top: 4px; }
+table.res th { text-align: left; color: var(--amber); font-weight: 400; border-bottom: 1px solid var(--line); padding: 3px 5px; white-space: nowrap; }
+table.res td { border-bottom: 1px solid var(--line2); padding: 3px 5px; white-space: nowrap; }
+table.res td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.attempt { border-left: 2px solid var(--line); padding: 2px 0 2px 8px; margin: 6px 0; }
+.attempt.fail { border-color: var(--red); }
+.attempt.ok { border-color: var(--green); }
+.loader { color: var(--dim); }
+.cursor { display: inline-block; width: 7px; height: 12px; background: var(--amber); vertical-align: -2px; animation: blink 1s steps(2, start) infinite; margin-left: 2px; }
+@keyframes blink { to { visibility: hidden; } }
+details summary { cursor: pointer; color: var(--dim); margin: 6px 0; }
+
+@media (max-width: 560px) {
+  .title { font-size: 8px; }
+  .q .txt { font-size: 12px; }
+  .hit { grid-template-columns: 1fr; gap: 0; }
+  .wrap { grid-template-rows: auto auto auto 1fr; }
+}
+@media (max-height: 340px) {
+  .tab { padding: 3px 6px; }
+  .q { padding: 3px 9px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <span class="title">NL2SQL</span>
+    <select id="sample" aria-label="Sample question"></select>
+    <span class="sp"></span>
+    <button class="btn" id="next" title="Run the next pipeline step">Next step</button>
+    <button class="btn primary" id="all" title="Run every step">Run all</button>
+    <button class="btn" id="reset">Reset</button>
+  </div>
+  <div class="q"><span class="lbl">question</span><span class="txt" id="qtxt"></span></div>
+  <div class="tabs" id="tabs" role="tablist" aria-label="Pipeline steps"></div>
+  <div class="panel" id="panel" role="tabpanel" aria-live="polite"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.js"></script>
+<script>
+(() => {
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const COMPANY = "DEMO";
+
+  /* ---------- fictional apparel-production data (seeded, no real names) ---------- */
+  function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+  const R = rng(20270);
+  const pick = (a) => a[Math.floor(R() * a.length)];
+  const BUYERS = ["Buyer North", "Buyer Atlas", "Buyer Kestrel", "Buyer Orion"];
+  const FACTORIES = ["Factory Alpha", "Factory Bravo", "Factory Cedar"];
+  const MATERIALS = ["Cotton Poplin", "Linen Twill", "Denim 12oz", "Viscose Jersey", "Cotton Rib"];
+  const WASH = ["Enzyme", "Stone", "Silicone", "Plain"];
+  const CARRIERS = ["Carrier One", "Carrier Two"];
+  const dayStr = (d) => { const base = Date.UTC(2027, 0, 1); return new Date(base + d * 86400000).toISOString().slice(0, 10); };
+
+  function buildData() {
+    const orders = [], ships = [], stock = [], prod = [];
+    for (let i = 0; i < 120; i++) {
+      const co = i % 7 === 3 ? "OTHER" : COMPANY;
+      const qty = 200 + Math.floor(R() * 2800);
+      const rate = +(4 + R() * 10).toFixed(2);
+      const status = pick(["Open", "Open", "Closed", "Cancelled"]);
+      const o = { CompanyCode: co, OrderNo: `PO-${1000 + i}`, Buyer: pick(BUYERS), Style: `ST-${1000 + (i % 40)}`, Season: pick(["SS27", "SS27", "AW26"]), Qty: qty, Value: Math.round(qty * rate), Status: status, FactoryName: pick(FACTORIES), "Wash Finish": pick(WASH) };
+      orders.push(o);
+      if (status !== "Cancelled") {
+        const planned = Math.floor(R() * 200);
+        const late = R() < 0.3;
+        const actual = late ? planned + 2 + Math.floor(R() * 8) : planned - 2 + Math.floor(R() * 3);
+        ships.push({ CompanyCode: co, OrderNo: o.OrderNo, Carrier: pick(CARRIERS), PlannedDate: dayStr(planned), ActualDate: dayStr(actual), Status: status === "Closed" ? "Delivered" : "In transit" });
+      }
+    }
+    for (let i = 0; i < 90; i++) stock.push({ CompanyCode: i % 9 === 4 ? "OTHER" : COMPANY, Material: pick(MATERIALS), Warehouse: pick(["WH-A", "WH-B"]), Qty: 50 + Math.floor(R() * 900), UOM: pick(["m", "kg"]) });
+    for (let w = 36; w <= 44; w++) for (const f of FACTORIES) for (const line of ["L1", "L2", "L3"]) {
+      const target = 800 + Math.floor(R() * 400);
+      const output = Math.round(target * (0.7 + R() * 0.35));
+      prod.push({ CompanyCode: COMPANY, Factory: f, Line: line, WeekNo: w, Output: output, Target: target, Efficiency: +(output / target * 100).toFixed(1) });
+    }
+    return { orders, ships, stock, prod };
+  }
+
+  /* ---------- sample questions: every step's output for each one ---------- */
+  const SAMPLES = [
+    {
+      id: "late",
+      q: "Which buyers have late shipments in SS27?",
+      terms: ["buyers", "late shipments", "SS27"],
+      trace: [
+        ["late shipments", "BusinessRule: late = ActualDate after PlannedDate (demo_shipments)"],
+        ["buyers", "VocabularyMapping: buyer -> demo_orders.Buyer"],
+        ["SS27", "Season code column demo_orders.Season"],
+      ],
+      tables: ["demo_shipments", "demo_orders"],
+      context: [
+        "demo_shipments: OrderNo, Carrier, PlannedDate, ActualDate, Status -- ActualDate is the carrier's delivery date",
+        "demo_orders: OrderNo, Buyer, Season, Qty, Value, Status -- Buyer is the brand that placed the order",
+      ],
+      rules: "late shipment = ActualDate later than PlannedDate. Count shipments, not orders.",
+      vocab: "buyers -> o.Buyer; SS27 -> o.Season = 'SS27'",
+      joins: "demo_shipments.OrderNo = demo_orders.OrderNo",
+      sql: "SELECT o.Buyer, COUNT(*) AS LateShipments FROM demo_shipments AS s JOIN demo_orders AS o ON o.OrderNo = s.OrderNo WHERE s.ActualDate > s.PlannedDate AND o.Season = 'SS27' GROUP BY o.Buyer ORDER BY LateShipments DESC",
+      alias: "s",
+      table: "demo_shipments",
+      reasoning: "Join shipments to their orders, keep rows where the actual date is after the planned date for SS27, then count per buyer.",
+      explain: "I matched shipments to their orders, kept the ones that arrived after the planned date for SS27, and counted the late ones for each buyer.",
+    },
+    {
+      id: "value",
+      q: "Order value and quantity by factory for SS27",
+      terms: ["order value", "quantity", "factory", "SS27"],
+      trace: [
+        ["order value", "BusinessRule: value is in USD (demo_orders.Value)"],
+        ["factory", "VocabularyMapping: factory -> demo_orders.FactoryName"],
+        ["SS27", "Season code column demo_orders.Season"],
+      ],
+      tables: ["demo_orders"],
+      context: ["demo_orders: OrderNo, Buyer, Season, Qty, Value, Status, FactoryName -- FactoryName is the sewing factory"],
+      rules: "Value is always USD. Group by the factory, not by buyer.",
+      vocab: "factory -> t.FactoryName; SS27 -> t.Season = 'SS27'",
+      joins: "(single table)",
+      sql: "SELECT t.FactoryName, SUM(t.Qty) AS Qty, SUM(t.Value) AS ValueUSD FROM demo_orders AS t WHERE t.Season = 'SS27' GROUP BY t.FactoryName ORDER BY ValueUSD DESC",
+      alias: "t",
+      table: "demo_orders",
+      reasoning: "One table. Filter to SS27, sum quantity and value per factory, largest value first.",
+      explain: "I filtered the orders to SS27, added up the quantity and value for each factory, and sorted by value.",
+    },
+    {
+      id: "stock",
+      q: "Stock by warehouse for cotton materials",
+      terms: ["stock", "warehouse", "cotton"],
+      trace: [
+        ["stock", "Graph table demo_stock (on-hand quantity)"],
+        ["warehouse", "VocabularyMapping: warehouse -> demo_stock.Warehouse"],
+        ["cotton", "VocabularyMapping: cotton -> Material LIKE '%Cotton%'"],
+      ],
+      tables: ["demo_stock"],
+      context: ["demo_stock: Material, Warehouse, Qty, UOM -- UOM is m for fabric, kg for trims"],
+      rules: "Stock is on-hand quantity. Keep the unit of measure in the result.",
+      vocab: "cotton -> t.Material LIKE '%Cotton%'",
+      joins: "(single table)",
+      sql: "SELECT t.Warehouse, t.Material, SUM(t.Qty) AS Qty, t.UOM FROM demo_stock AS t WHERE t.Material LIKE '%Cotton%' GROUP BY t.Warehouse, t.Material, t.UOM ORDER BY Qty DESC",
+      alias: "t",
+      table: "demo_stock",
+      reasoning: "Filter materials containing cotton, sum quantity per warehouse and material, keep the unit.",
+      explain: "I found the cotton materials, added up the stock in each warehouse, and kept the unit of measure.",
+    },
+    {
+      id: "wash",
+      q: "Open orders with an Enzyme wash finish",
+      terms: ["open orders", "Enzyme wash finish"],
+      trace: [
+        ["open orders", "VocabularyMapping: open -> Status = 'Open'"],
+        ["Enzyme wash finish", "Column demo_orders.[Wash Finish] (name has a space)"],
+      ],
+      tables: ["demo_orders"],
+      context: ["demo_orders: OrderNo, Buyer, Style, Qty, Status, [Wash Finish] -- Wash Finish is the finish recipe name"],
+      rules: "Column names with spaces must be bracketed in T-SQL.",
+      vocab: "open -> t.Status = 'Open'; Enzyme -> t.[Wash Finish] = 'Enzyme'",
+      joins: "(single table)",
+      sql: "SELECT t.Style, t.Buyer, t.Qty FROM demo_orders AS t WHERE t.[Wash Finish] = 'Enzyme' AND t.Status = 'Open' ORDER BY t.Qty DESC",
+      brokenSql: "SELECT t.Style, t.Buyer, t.Qty FROM demo_orders AS t WHERE t.Wash Finish = 'Enzyme' AND t.Status = 'Open' ORDER BY t.Qty DESC",
+      alias: "t",
+      table: "demo_orders",
+      reasoning: "Open orders whose wash finish is Enzyme, largest first.",
+      explain: "I listed the open orders with an Enzyme wash finish, biggest first.",
+    },
+    {
+      id: "eff",
+      q: "Line efficiency for week 40",
+      terms: ["line efficiency", "week 40"],
+      trace: [
+        ["line efficiency", "BusinessRule: efficiency = output / target, stored as a percent"],
+        ["week 40", "Column demo_production.WeekNo"],
+      ],
+      tables: ["demo_production"],
+      context: ["demo_production: Factory, Line, WeekNo, Output, Target, Efficiency -- Efficiency is a percent"],
+      rules: "Average efficiency per line. Do not recompute it from output and target.",
+      vocab: "week 40 -> t.WeekNo = 40",
+      joins: "(single table)",
+      sql: "SELECT t.Line, ROUND(AVG(t.Efficiency), 1) AS AvgEff, SUM(t.Output) AS Output FROM demo_production AS t WHERE t.WeekNo = 40 GROUP BY t.Line ORDER BY AvgEff DESC",
+      alias: "t",
+      table: "demo_production",
+      reasoning: "Filter to week 40, average efficiency and sum output per line.",
+      explain: "For week 40, I averaged the efficiency and added up the output for each production line.",
+    },
+  ];
+  const STEPS = ["Terms", "Tables", "Context", "Prompt", "SQL", "Validate", "Run", "Explain"];
+
+  /* ---------- helpers mirroring the backend ---------- */
+  const PROMPT_HEAD = `You are a T-SQL expert. Generate a single executable SQL query for the user's question.
+
+This is the current date and time: {now}
+
+COLUMN REFERENCE: each line says what a column CONTAINS. Use the description to pick
+the column. A BUSINESS RULE wins over a description when they disagree.
+{column_refs}
+
+## SCHEMA (from knowledge graph; these are the ONLY tables and columns available)
+{schema}
+
+## BUSINESS RULES (apply these EXACTLY as written)
+{rules}
+
+## VOCABULARY MAPPINGS (user term -> SQL filter)
+{vocab}
+
+## JOIN PATHS
+{joins}
+
+## SIMILAR PAST QUERIES (style reference only)
+(none in this demo)
+
+## CHAT HISTORY
+(first turn)
+
+## USER QUESTION
+{question}
+
+RESPOND WITH ONLY VALID JSON:
+{"sql": "...", "chosen_tables": [...], "reasoning": "..."}`;
+
+  function buildPrompt(s) {
+    const schema = s.context.map((l) => "  " + l).join("\n");
+    const refs = s.context.map((l) => "  " + l.split(" -- ")[0].split(":")[0] + ": " + (l.split(" -- ")[1] || "")).join("\n");
+    return PROMPT_HEAD
+      .replace("{now}", "2027-03-14 09:00 (demo clock)")
+      .replace("{column_refs}", refs)
+      .replace("{schema}", schema)
+      .replace("{rules}", "  " + s.rules)
+      .replace("{vocab}", "  " + s.vocab)
+      .replace("{joins}", "  " + s.joins)
+      .replace("{question}", s.q);
+  }
+
+  // Company filter, shaped like the backend's AST step: AND onto an existing WHERE, else add one.
+  function injectCompany(sql, alias) {
+    const clauseRe = /\s(GROUP BY|ORDER BY|LIMIT)\b/i;
+    const cond = `${alias}.CompanyCode = '${COMPANY}'`;
+    const m = sql.search(clauseRe);
+    const head = m >= 0 ? sql.slice(0, m) : sql;
+    const tail = m >= 0 ? sql.slice(m) : "";
+    const added = /\sWHERE\s/i.test(head) ? ` AND ${cond}` : ` WHERE ${cond}`;
+    return { sql: head + added + tail, before: head, added, after: tail };
+  }
+
+  function spacedColumns(sql) {
+    return /\bt\.Wash Finish\b/.test(sql) ? ["Wash Finish"] : [];
+  }
+  function validate(sql) {
+    const checks = [];
+    const trimmed = sql.trim();
+    checks.push({ ok: /^SELECT\b/i.test(trimmed), text: "Starts with SELECT (read-only)" });
+    checks.push({ ok: !/;\s*\S/.test(trimmed), text: "One statement only" });
+    checks.push({ ok: /\sFROM\s/i.test(trimmed), text: "Has a FROM clause" });
+    const sp = spacedColumns(sql);
+    checks.push({ ok: sp.length === 0, text: sp.length ? `Column with a space is not bracketed: ${sp.join(", ")}` : "Identifiers with spaces are bracketed", repairable: sp.length > 0 });
+    return checks;
+  }
+  const kwHighlight = (s) => esc(s).replace(/\b(SELECT|FROM|WHERE|GROUP BY|ORDER BY|JOIN|ON|AND|AS|DESC|ASC|LIKE|SUM|COUNT|AVG|ROUND|LIMIT)\b/g, '<span class="kw">$1</span>').replace(/'([^']*)'/g, '<span class="str">\'$1\'</span>');
+
+  /* ---------- state ---------- */
+  let db = null, SQLlib = null;
+  let idx = 0, done = 0, cur = 0;           // done = number of finished steps; cur = viewed tab
+  const results = {};                       // per-step computed output
+  let busy = false;
+
+  function sample() { return SAMPLES[idx]; }
+
+  function reset() { done = 0; cur = 0; for (const k of Object.keys(results)) delete results[k]; draw(); }
+
+  function drawTabs() {
+    $("#tabs").innerHTML = STEPS.map((name, i) => {
+      const cls = [i < done ? "done" : "", i === cur ? "cur" : "", results[i] && results[i].err ? "err" : ""].join(" ").trim();
+      return `<button class="tab ${cls}" role="tab" aria-selected="${i === cur}" data-tab="${i}"><span class="num">${i + 1}</span>${name}</button>`;
+    }).join("");
+    $("#next").disabled = busy || done >= STEPS.length;
+    $("#next").textContent = done >= STEPS.length ? "Done" : `Next: ${STEPS[done]}`;
+  }
+
+  function draw() {
+    const s = sample();
+    $("#qtxt").textContent = s.q;
+    drawTabs();
+    const body = view(cur);
+    $("#panel").innerHTML = body;
+  }
+
+  function view(i) {
+    const s = sample();
+    if (i >= done) {
+      return `<h3>${i + 1}. ${STEPS[i]}</h3><p class="dim">Not run yet. Press <b>Next step</b> to reach it.</p>`;
+    }
+    const r = results[i] || {};
+    switch (i) {
+      case 0: return `<h3>1. Terms</h3>
+        <p class="dim">Pull key terms out of the question. Graph lookups use these, not the model, so this step costs nothing.</p>
+        <div class="box">${s.terms.map((t) => `"${esc(t)}"`).join("  ")}</div>`;
+      case 1: return `<h3>2. Table selection (graph)</h3>
+        <p class="dim">Each term matches a graph node. Matched tables are the only ones the model may use.</p>
+        ${s.trace.map(([k, v]) => `<div class="hit"><span class="k">${esc(k)}</span><span>${esc(v)}</span></div>`).join("")}
+        <p>Tables chosen: <span class="ok">${s.tables.map(esc).join(", ")}</span></p>`;
+      case 2: return `<h3>3. Context assembly</h3>
+        <p class="dim">Schema from the graph, with the admin-written column descriptions attached. Descriptions say what a column holds; business rules say how to query it.</p>
+        <div class="box">${esc(s.context.join("\n"))}</div>
+        <p><span class="dim">Business rule:</span> ${esc(s.rules)}</p>
+        <p><span class="dim">Joins:</span> ${esc(s.joins)}</p>`;
+      case 3: {
+        const p = buildPrompt(s);
+        return `<h3>4. Prompt</h3>
+          <p class="dim">The filled prompt sent to the model, about ${Math.round(p.length / 4)} tokens. Shown condensed.</p>
+          <details open><summary>Filled prompt (${p.split("\n").length} lines)</summary><div class="box" style="max-height:170px">${esc(p)}</div></details>`;
+      }
+      case 4: return `<h3>5. SQL generation</h3>
+        <p class="dim">The model returns JSON with one query. This playground uses that sample's canned answer, so no API is called.</p>
+        <div class="box">${kwHighlight(JSON.stringify({ sql: r.raw || s.brokenSql || s.sql, chosen_tables: s.tables, reasoning: s.reasoning }, null, 2))}</div>
+        <p><span class="dim">Reasoning:</span> ${esc(s.reasoning)}</p>`;
+      case 5: {
+        const checks = validate(r.raw || s.brokenSql || s.sql);
+        return `<h3>6. Validation and company filter</h3>
+          <p class="dim">The query is parsed, then every query gets its company filter. The model never chooses that filter.</p>
+          ${checks.map((c) => `<div class="check"><span class="${c.ok ? "ok" : c.repairable ? "warn" : "no"}">${c.ok ? "✓" : c.repairable ? "!" : "✗"}</span><b>${esc(c.text)}</b></div>`).join("")}
+          <p><span class="dim">Company filter added to</span> <span class="kw">${esc(s.alias)}</span>.<span class="kw">CompanyCode</span> = '${COMPANY}'. Rows from other companies in ${esc(s.table)}: <b>${r.otherRows ?? "?"}</b> (excluded).</p>
+          <div class="box">${r.finalHtml || ""}</div>`;
+      }
+      case 6: {
+        if (r.err && !r.rows) return `<h3>7. Run</h3><p class="no">Failed: ${esc(r.err)}</p>`;
+        const attempts = (r.attempts || []).map((a) => `<div class="attempt ${a.ok ? "ok" : "fail"}"><b class="${a.ok ? "ok" : "no"}">${a.label}</b><div class="box" style="margin:4px 0">${esc(a.sql)}</div>${a.msg ? `<div class="${a.ok ? "dim" : "no"}">${esc(a.msg)}</div>` : ""}</div>`).join("");
+        const table = r.rows ? renderTable(r.cols, r.rows) : "";
+        return `<h3>7. Run on the demo database</h3>
+          <p class="dim">The database is a fictional production dataset, run in SQLite here. Production runs T-SQL on the real warehouse.</p>
+          ${attempts}${table}`;
+      }
+      case 7: return `<h3>8. Explanation</h3>
+        <p class="dim">A short, plain-English account of the steps, written after the run.</p>
+        <p>${esc(s.explain)}</p>
+        <p class="dim" style="margin-top:10px;font-size:11px">Done. Pick another sample, or Run all again.</p>`;
+    }
+    return "";
+  }
+
+  function renderTable(cols, rows) {
+    const head = `<tr>${cols.map((c) => `<th>${esc(c)}</th>`).join("")}</tr>`;
+    const body = rows.slice(0, 8).map((row) => `<tr>${row.map((v) => `<td class="${typeof v === "number" ? "n" : ""}">${esc(typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(1)) : v)}</td>`).join("")}</tr>`).join("");
+    return `<table class="res"><thead>${head}</thead><tbody>${body}</tbody></table><p class="dim" style="font-size:11px">${rows.length} row${rows.length === 1 ? "" : "s"}${rows.length > 8 ? " (first 8 shown)" : ""}</p>`;
+  }
+
+  /* ---------- steps (each one fills results[i] and advances) ---------- */
+  function countOther(table) {
+    if (!db) return "?";
+    try { const res = db.exec(`SELECT COUNT(*) FROM ${table} WHERE CompanyCode <> '${COMPANY}'`); return res[0].values[0][0]; } catch (_) { return "?"; }
+  }
+  function execSql(sql) {
+    const res = db.exec(sql);
+    if (!res.length) return { cols: [], rows: [] };
+    return { cols: res[0].columns, rows: res[0].values };
+  }
+  async function runStep(i) {
+    const s = sample();
+    if (i === 5) {
+      // The model's output (for the wash sample, the unbracketed version) gets the company filter.
+      const raw = s.brokenSql || s.sql;
+      const inj = injectCompany(raw, s.alias);
+      const finalHtml = kwHighlight(inj.before) + `<mark class="inj">${kwHighlight(inj.added)}</mark>` + kwHighlight(inj.after);
+      results[5] = { raw, final: inj.sql, finalHtml, otherRows: countOther(s.table) };
+    }
+    if (i === 6) {
+      // Run with a tiny execute-and-repair loop, like _execute_and_fix (max 3 attempts).
+      const attempts = [];
+      let sqlNow = results[5].final;
+      let rows = null, cols = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const out = execSql(sqlNow);
+          attempts.push({ label: `Attempt ${attempt}: ok`, sql: sqlNow, ok: true, msg: `${out.rows.length} rows` });
+          rows = out.rows; cols = out.cols;
+          break;
+        } catch (e) {
+          const msg = String(e.message || e);
+          attempts.push({ label: `Attempt ${attempt}: failed`, sql: sqlNow, ok: false, msg });
+          // Deterministic repair first: bracket known spaced column names.
+          const fixed = sqlNow.replace(/\bt\.Wash Finish\b/g, "t.[Wash Finish]");
+          if (fixed !== sqlNow) {
+            attempts.push({ label: "Repair: bracket known column names", sql: fixed, ok: true, msg: "No model call needed. Repair only changes names it knows, and only when the statement fails to parse." });
+            sqlNow = fixed;
+            continue;
+          }
+          break;
+        }
+      }
+      results[6] = { attempts, rows, cols, err: rows ? null : "all attempts failed" };
+      if (!rows) { results[6].err = attempts[attempts.length - 1].msg; }
+    }
+    results[i] = results[i] || {};
+    results[i].done = true;
+  }
+
+  async function advance() {
+    if (busy || done >= STEPS.length) return;
+    busy = true;
+    const i = done;
+    try {
+      if (i >= 5) await ensureDb().catch(() => {});
+      if (i === 6) {
+        drawTabs();
+        $("#panel").innerHTML = `<h3>7. Run</h3><p class="loader">Loading the demo database<span class="cursor"></span></p>`;
+        await ensureDb();
+      }
+      await runStep(i);
+      done = i + 1;
+      cur = i;
+      if (i === 6 && results[6].err) {
+        // the run step failed, mark it
+        results[6].failed = true;
+      }
+    } catch (e) {
+      results[i] = { err: String(e.message || e) };
+      done = i + 1; cur = i;
+    } finally {
+      busy = false;
+      draw();
+    }
+  }
+
+  async function ensureDb() {
+    if (db) return;
+    if (!window.initSqlJs) throw new Error("sql.js did not load (needs the jsDelivr CDN)");
+    SQLlib = SQLlib || await window.initSqlJs({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${f}` });
+    db = new SQLlib.Database();
+    const d = buildData();
+    db.run(`CREATE TABLE demo_orders (CompanyCode TEXT, OrderNo TEXT, Buyer TEXT, Style TEXT, Season TEXT, Qty INT, Value REAL, Status TEXT, FactoryName TEXT, "Wash Finish" TEXT);`);
+    db.run(`CREATE TABLE demo_shipments (CompanyCode TEXT, OrderNo TEXT, Carrier TEXT, PlannedDate TEXT, ActualDate TEXT, Status TEXT);`);
+    db.run(`CREATE TABLE demo_stock (CompanyCode TEXT, Material TEXT, Warehouse TEXT, Qty INT, UOM TEXT);`);
+    db.run(`CREATE TABLE demo_production (CompanyCode TEXT, Factory TEXT, Line TEXT, WeekNo INT, Output INT, Target INT, Efficiency REAL);`);
+    const ins = (table, rows, cols) => {
+      const st = db.prepare(`INSERT INTO ${table} (${cols.map((c) => (c.includes(" ") ? `"${c}"` : c)).join(",")}) VALUES (${cols.map(() => "?").join(",")})`);
+      db.run("BEGIN");
+      for (const r of rows) st.run(cols.map((c) => r[c]));
+      db.run("COMMIT");
+      st.free();
+    };
+    ins("demo_orders", d.orders, ["CompanyCode", "OrderNo", "Buyer", "Style", "Season", "Qty", "Value", "Status", "FactoryName", "Wash Finish"]);
+    ins("demo_shipments", d.ships, ["CompanyCode", "OrderNo", "Carrier", "PlannedDate", "ActualDate", "Status"]);
+    ins("demo_stock", d.stock, ["CompanyCode", "Material", "Warehouse", "Qty", "UOM"]);
+    ins("demo_production", d.prod, ["CompanyCode", "Factory", "Line", "WeekNo", "Output", "Target", "Efficiency"]);
+  }
+
+  async function runAll() {
+    if (busy) return;
+    while (done < STEPS.length) {
+      await advance();
+      if (results[done - 1] && results[done - 1].err && done - 1 !== 6) break;
+      await new Promise((r) => setTimeout(r, 260));
+    }
+  }
+
+  /* ---------- wiring ---------- */
+  $("#sample").innerHTML = SAMPLES.map((s, i) => `<option value="${i}">${esc(s.q.length > 44 ? s.q.slice(0, 42) + "…" : s.q)}</option>`).join("");
+  $("#sample").addEventListener("change", (e) => { idx = +e.target.value; reset(); });
+  $("#next").addEventListener("click", () => advance());
+  $("#all").addEventListener("click", () => { if (done === 0) reset(); runAll(); });
+  $("#reset").addEventListener("click", () => { reset(); });
+  $("#tabs").addEventListener("click", (e) => {
+    const t = e.target.closest("[data-tab]");
+    if (!t) return;
+    cur = +t.dataset.tab;
+    draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

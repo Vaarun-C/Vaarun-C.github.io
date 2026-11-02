@@ -1,0 +1,21 @@
+{
+ "title": "PlannerAI",
+ "tagline": "Intent-routed plan optimizer for factory lines",
+ "description": "PlannerAI reschedules late production orders on a factory board. A classifier reads each request, routes it to one of three optimizations (pull forward, chop and move, same-style batching), and a decision tree picks the path that most improves on-time delivery. This demo runs the same flow on a fictional board and shows the Gantt before and after.",
+ "tech": [
+  "JavaScript",
+  "SVG",
+  "d3.js",
+  "Python",
+  "FastAPI"
+ ],
+ "kind": "ml",
+ "repo": null,
+ "controls": "Tap a request or type one · BEFORE / AFTER toggle · RESET BOARD",
+ "context": "Production work",
+ "highlights": [
+  "Agentic planner for factory production schedules",
+  "LLM intent classification routes requests to analysis, clarifying questions or optimisation",
+  "Tree search over optimisation moves (pull forward, chop and move, same-style batching), scored by Plan Health"
+ ]
+}

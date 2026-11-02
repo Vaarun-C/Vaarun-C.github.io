@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wide-Ball Guideline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0e12; --panel:#121820; --panel2:#171f29; --line:#243041;
+  --ink:#e7ecf2; --muted:#8190a3; --accent:#ff6fd8; --ok:#5fe3c4; --warn:#ffd27a; --bad:#ff8a73;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:12px/1.4 Inter,system-ui,-apple-system,sans-serif;overflow:hidden;-webkit-text-size-adjust:100%}
+button,input{font:inherit;color:inherit}
+.app{height:100%;display:flex;flex-direction:column;padding:10px 12px 8px;gap:8px;min-height:0}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.title{font-weight:600;font-size:13px;margin:0}
+.tag{font:500 9.5px/1 "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--warn);border:1px solid #5a4b25;padding:4px 6px;white-space:nowrap}
+
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:0;min-width:0;display:flex;flex-direction:column;gap:6px}
+.lbl{font:500 9.5px/1 "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.box{position:relative;flex:1;min-height:110px}
+.box canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#plan{cursor:crosshair}
+
+.readout{font:400 10.5px/1.5 "JetBrains Mono",monospace;color:var(--ink);display:grid;grid-template-columns:auto 1fr;gap:1px 8px}
+.readout .k{color:var(--muted)}
+.verdict{font:600 12px/1.3 Inter,system-ui,sans-serif;padding:5px 7px;border-radius:6px;border:1px solid var(--line);background:var(--panel2)}
+.verdict.wide{color:var(--bad);border-color:#5a3328}
+.verdict.in{color:var(--ok);border-color:#1d4a40}
+
+.foot{display:flex;flex-direction:column;gap:6px;font-size:10.5px;color:var(--muted)}
+.frow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.frow input[type=range]{flex:1 1 120px;min-width:90px;accent-color:var(--accent)}
+.btn{height:26px;padding:0 9px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:5px;cursor:pointer;touch-action:manipulation;white-space:nowrap;font-size:11px}
+.btn:hover{border-color:var(--accent)}
+.btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.status{font:400 10px/1.35 "JetBrains Mono",monospace;color:var(--muted)}
+.model{line-height:1.45}
+.model b{color:var(--ink);font-weight:500}
+
+@media (max-width:560px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100%}
+  .main{grid-template-columns:1fr}
+  .box{min-height:170px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <p class="title">Dynamic wide guideline</p>
+    <span class="tag">Pose step pre-computed</span>
+  </div>
+
+  <div class="main">
+    <section class="card">
+      <div class="lbl">Pitch, plan view · drag the foot (cyan) and the ball (white)</div>
+      <div class="box"><canvas id="plan" aria-label="Plan view of the pitch with batter foot, wide guideline and ball path"></canvas></div>
+      <div class="frow">
+        <span class="lbl">Stance</span>
+        <button class="btn" data-preset="0" type="button">Still</button>
+        <button class="btn" data-preset="1" type="button">Stride</button>
+        <button class="btn" data-preset="2" type="button">Wide stride</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="lbl">Camera view · fan search over the foot</div>
+      <div class="box"><canvas id="cam" aria-label="Camera view with fan lines and the nearest line to the foot"></canvas></div>
+      <div class="readout" id="readout"></div>
+      <div class="verdict" id="verdict">-</div>
+    </section>
+  </div>
+
+  <div class="foot">
+    <div class="frow">
+      <span class="lbl">Ball line</span>
+      <input id="ball" type="range" min="-1.5" max="1.5" step="0.01" value="0.9" aria-label="Ball lateral position at popping crease, metres">
+      <span class="mono" id="ballVal">0.90 m</span>
+    </div>
+    <div class="status" id="status">Stances are pre-computed landmark presets. The guideline, fan search and wide call run live.</div>
+    <div class="model">
+      <b>Pipeline.</b> In the repo, MediaPipe Pose tracks the batter's right foot in the main-camera video. The foot's image position picks the nearest of 40 fan lines, and that line's offset (<span class="mono">(i-60)*0.002237 m</span>) moves the guideline from 0.89 m out to the 1.32 m return crease. <b>Not run here:</b> pose inference and video frames. <b>Added here:</b> the wide call. The repo has no ball judging. The leg side uses a fixed 0.89 m line.
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ---------- repo constants (metres; pitch 22.56 m, popping crease at 8.84 m, bowling crease at 10.06 m) ----------
+var POP_X = 8.84, BOWL_X = 10.06, RET_Z = 1.32, STUMP_Z = [-0.089, 0, 0.089];
+var GUIDE_BASE = 0.89, GUIDE_MAX = 1.32, SHIFT_CAP = 0.43, PIX = 0.002237288;
+var FAN_Y = 770, FAN_LEN = 40, FRAME_W = 1920, FRAME_H = 1080;
+
+// fan lines (repo: start (960 - i, 770), angle atan(968/i), i = 10..605 step 15)
+var FAN = [];
+for(var i = 10; i <= 605; i += 15){
+  var a = Math.atan(968 / i);
+  var sx = 960 - i, sy = FAN_Y;
+  FAN.push({ i: i, x1: sx, y1: sy, x2: sx + FAN_LEN*Math.cos(a), y2: sy - FAN_LEN*Math.sin(a) });
+}
+
+// ---------- repo geometry: nearest fan line to the foot, shift, guideline ----------
+// foot image position for a lateral displacement d (metres toward the off side)
+function footPixel(d){ return { x: 900 - d/PIX, y: FAN_Y }; }
+function triArea(px, py, L){
+  return Math.abs(0.5*(L.x1*(L.y2 - py) + L.x2*(py - L.y1) + px*(L.y1 - L.y2)));
+}
+function chain(d){
+  var f = footPixel(d);
+  var best = null, bestA = Infinity, bestIdx = -1;
+  for(var n = 0; n < FAN.length; n++){
+    var A = triArea(f.x, f.y, FAN[n]);
+    if(A < bestA){ bestA = A; best = FAN[n]; bestIdx = n; }
+  }
+  var shiftPx = 900 - best.x1;
+  var shiftM = shiftPx * PIX;
+  var guide;
+  if(shiftM >= SHIFT_CAP) guide = RET_Z;                     // repo: snaps to return crease
+  else if(shiftM >= 0) guide = GUIDE_BASE + shiftM;           // repo: 0.89 + shift
+  else guide = GUIDE_BASE;                                    // no negative move (repo keeps previous value)
+  if(guide > RET_Z) guide = RET_Z;
+  return { foot: f, line: best, lineIdx: bestIdx, area: bestA, shiftM: shiftM, guide: guide };
+}
+
+// ---------- presets: pre-computed foot landmark stances (stand-ins for MediaPipe output) ----------
+var PRESETS = [
+  { name: 'Still', d: 0.00 },
+  { name: 'Stride', d: 0.25 },
+  { name: 'Wide stride', d: 0.46 }
+];
+
+// ---------- state ----------
+var st = { d: 0.00, ball: 0.90, preset: 0, drag: null };
+
+var $ = function(id){ return document.getElementById(id); };
+var plan = $('plan'), pctx = plan.getContext('2d');
+var cam = $('cam'), cctx = cam.getContext('2d');
+var ballSlider = $('ball'), ballVal = $('ballVal');
+
+// plan view mapping: x (bowler end right, batter end left) in [-12.2, 12.2], z (off side up) in [-2.4, 2.4]
+var VX = 12.2, VZ = 2.4;
+var PL = { x0: 0, y0: 0, w: 1, h: 1 };
+function toPx(x, z){ return { x: PL.x0 + (x + VX)/(2*VX)*PL.w, y: PL.y0 + (VZ - z)/(2*VZ)*PL.h }; }
+function toWorld(px, py){ return { x: (px - PL.x0)/PL.w*2*VX - VX, z: VZ - (py - PL.y0)/PL.h*2*VZ }; }
+
+// ball: released at (10.9, 0) on the bowler end, passes the popping crease at (-POP_X, ball)
+var REL = { x: 10.9, z: 0 };
+function ballPathEnd(){ return { x: -10.9, z: st.ball*(-10.9 - REL.x)/(-POP_X - REL.x) }; }
+
+function verdict(){
+  var c = chain(st.d);
+  var off = st.ball > c.guide;         // off side: dynamic line
+  var leg = st.ball < -GUIDE_BASE;     // leg side: fixed 0.89 m
+  var wide = off || leg;
+  return { chain: c, wide: wide, off: off, leg: leg };
+}
+
+// ---------- drawing: plan ----------
+function sizeCanvas(cv, ctx){
+  var dpr = window.devicePixelRatio || 1;
+  var W = cv.clientWidth, H = cv.clientHeight;
+  if(!W || !H) return null;
+  if(cv.width !== Math.round(W*dpr) || cv.height !== Math.round(H*dpr)){ cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  return { W: W, H: H };
+}
+function line(ctx, a, b, color, width, dash){
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+  ctx.strokeStyle = color; ctx.lineWidth = width || 1;
+  ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]);
+}
+function drawPlan(){
+  var s = sizeCanvas(plan, pctx); if(!s) return;
+  PL.x0 = 0; PL.y0 = 0; PL.w = s.W; PL.h = s.H;
+  var v = verdict(), c = v.chain, ctx = pctx;
+
+  // grass and pitch
+  ctx.fillStyle = '#122119'; ctx.fillRect(0, 0, s.W, s.H);
+  var p1 = toPx(-BOWL_X, RET_Z), p2 = toPx(BOWL_X, -RET_Z);
+  ctx.fillStyle = 'rgba(214,190,120,0.16)';
+  ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+
+  // creases
+  var cr = 'rgba(200,220,255,0.55)';
+  var a, b;
+  a = toPx(-POP_X, -1.52); b = toPx(-POP_X, 1.52); line(ctx, a, b, cr, 1.2);
+  a = toPx(POP_X, -1.52); b = toPx(POP_X, 1.52); line(ctx, a, b, cr, 1.2);
+  a = toPx(-BOWL_X, -RET_Z); b = toPx(-BOWL_X, RET_Z); line(ctx, a, b, cr, 1.2);
+  a = toPx(BOWL_X, -RET_Z); b = toPx(BOWL_X, RET_Z); line(ctx, a, b, cr, 1.2);
+  [-RET_Z, RET_Z].forEach(function(z){
+    line(ctx, toPx(-BOWL_X, z), toPx(-11.9, z), cr, 1.2);
+  });
+
+  // stumps (batter end)
+  STUMP_Z.forEach(function(z){
+    var q = toPx(-BOWL_X, z);
+    ctx.fillStyle = '#f2f4f7'; ctx.beginPath(); ctx.arc(q.x, q.y, 2.2, 0, Math.PI*2); ctx.fill();
+  });
+
+  // static leg-side guideline (fixed 0.89 m)
+  line(ctx, toPx(-POP_X - 0.61, -GUIDE_BASE), toPx(-POP_X + 0.61, -GUIDE_BASE), 'rgba(129,144,163,0.9)', 1.2, [4, 3]);
+  // dynamic off-side guideline (repo: magenta virtual line)
+  var g0 = toPx(-POP_X - 0.61, c.guide), g1 = toPx(-POP_X + 0.61, c.guide);
+  line(ctx, g0, g1, v.off ? '#ff3fb4' : 'rgba(255,111,216,0.9)', 2.4);
+  var lbl = toPx(-POP_X + 0.7, c.guide);
+  ctx.fillStyle = 'rgba(255,111,216,0.95)'; ctx.font = '600 10px "JetBrains Mono", monospace'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillText('wide ' + c.guide.toFixed(2) + ' m', lbl.x, lbl.y);
+
+  // ball path (release to batter end) and its crossing point
+  var rel = toPx(REL.x, REL.z), end = ballPathEnd(), endp = toPx(end.x, end.z);
+  line(ctx, rel, endp, 'rgba(231,236,242,0.35)', 1, [3, 3]);
+  var cross = toPx(-POP_X, st.ball);
+  ctx.fillStyle = v.wide ? '#ff8a73' : '#e7ecf2';
+  ctx.beginPath(); ctx.arc(cross.x, cross.y, 6, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#0b0e12'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = '#8190a3'; ctx.beginPath(); ctx.arc(rel.x, rel.y, 2.5, 0, Math.PI*2); ctx.fill();
+  ctx.font = '500 10px "JetBrains Mono", monospace'; ctx.textAlign = 'left'; ctx.fillStyle = '#8190a3';
+  ctx.fillText('bowler', rel.x - 40, rel.y + 12);
+
+  // batter: foot at popping crease, shifted by d
+  var foot = toPx(-POP_X, st.d);
+  // body sketch (stylised, plan view)
+  var body = toPx(-POP_X - 0.9, st.d*0.6);
+  ctx.fillStyle = 'rgba(0,229,255,0.12)';
+  ctx.beginPath(); ctx.ellipse(body.x, body.y, 16, 22, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#00d2ff';
+  ctx.beginPath(); ctx.arc(foot.x, foot.y, 6, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#0b0e12'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = '#7fe9ff'; ctx.font = '500 10px "JetBrains Mono", monospace';
+  ctx.fillText('foot ' + (st.d >= 0 ? '+' : '') + st.d.toFixed(2) + ' m', foot.x - 36, foot.y + 16);
+
+  // axis note
+  ctx.fillStyle = '#5b6878'; ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('off side (+z)', s.W - 6, 12);
+  ctx.textAlign = 'left';
+}
+
+// ---------- drawing: camera fan ----------
+function drawCam(){
+  var s = sizeCanvas(cam, cctx); if(!s) return;
+  var v = verdict(), c = v.chain, ctx = cctx;
+  var sc = s.W / FRAME_W;
+  var X = function(x){ return x*sc; }, Y = function(y){ return y*sc; };
+  ctx.fillStyle = '#0e1a14'; ctx.fillRect(0, 0, s.W, s.H);
+  ctx.strokeStyle = 'rgba(200,220,255,0.35)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, Y(FAN_Y)); ctx.lineTo(s.W, Y(FAN_Y)); ctx.stroke();
+  FAN.forEach(function(L, n){
+    var sel = (n === c.lineIdx);
+    ctx.strokeStyle = sel ? '#ff3fb4' : 'rgba(127,233,255,0.22)';
+    ctx.lineWidth = sel ? 2.5 : 1;
+    ctx.beginPath(); ctx.moveTo(X(L.x1), Y(L.y1)); ctx.lineTo(X(L.x2), Y(L.y2)); ctx.stroke();
+  });
+  // foot keypoint
+  var f = c.foot;
+  ctx.fillStyle = '#00d2ff';
+  ctx.beginPath(); ctx.arc(X(f.x), Y(f.y), 4, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#0b0e12'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = '#5b6878'; ctx.font = '9px "JetBrains Mono", monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('fan i=' + c.line.i + ' · 40 lines', 6, s.H - 6);
+}
+
+// ---------- readouts ----------
+function row(k, v){ return '<span class="k">' + k + '</span><span>' + v + '</span>'; }
+function update(){
+  var v = verdict(), c = v.chain;
+  $('readout').innerHTML =
+    row('foot x (px)', c.foot.x.toFixed(0)) +
+    row('nearest fan', 'i=' + c.line.i + ' · start ' + c.line.x1.toFixed(0) + ' px') +
+    row('shift', (c.shiftM >= 0 ? '+' : '') + c.shiftM.toFixed(3) + ' m') +
+    row('wide line', c.guide.toFixed(3) + ' m') +
+    row('ball at crease', (st.ball >= 0 ? '+' : '') + st.ball.toFixed(2) + ' m');
+  var vd = $('verdict');
+  if(v.wide){
+    vd.className = 'verdict wide';
+    vd.textContent = 'WIDE: ball ' + (v.off ? 'outside the ' + c.guide.toFixed(2) + ' m line' : 'outside the leg-side 0.89 m line');
+  } else {
+    vd.className = 'verdict in';
+    vd.textContent = 'Not wide: inside the ' + c.guide.toFixed(2) + ' m line';
+  }
+  ballVal.textContent = st.ball.toFixed(2) + ' m';
+  if(ballSlider.value !== st.ball.toFixed(2)) ballSlider.value = st.ball.toFixed(2);
+  document.querySelectorAll('[data-preset]').forEach(function(b){
+    b.setAttribute('aria-pressed', String(Number(b.getAttribute('data-preset')) === st.preset));
+  });
+  drawPlan(); drawCam();
+}
+
+// ---------- pointer interaction on the plan view ----------
+function hit(px, py){
+  var fp = toPx(-POP_X, st.d), bp = toPx(-POP_X, st.ball);
+  var df = Math.hypot(px - fp.x, py - fp.y), db = Math.hypot(px - bp.x, py - bp.y);
+  if(db < 18 && db <= df) return 'ball';
+  if(df < 18) return 'foot';
+  return null;
+}
+function planPoint(e){
+  var r = plan.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+plan.addEventListener('pointerdown', function(e){
+  var p = planPoint(e), h = hit(p.x, p.y);
+  if(!h){
+    // tap elsewhere: move the ball line
+    var w = toWorld(p.x, p.y);
+    st.ball = Math.max(-1.5, Math.min(1.5, w.z));
+    h = 'ball';
+  }
+  st.drag = h; st.preset = -1; plan.setPointerCapture(e.pointerId); moveDrag(p); update();
+});
+function moveDrag(p){
+  if(!st.drag) return;
+  var w = toWorld(p.x, p.y);
+  if(st.drag === 'foot') st.d = Math.max(-0.2, Math.min(0.6, w.z));
+  if(st.drag === 'ball') st.ball = Math.max(-1.5, Math.min(1.5, w.z));
+}
+plan.addEventListener('pointermove', function(e){ if(!st.drag) return; moveDrag(planPoint(e)); update(); });
+function endDrag(){ st.drag = null; }
+plan.addEventListener('pointerup', endDrag);
+plan.addEventListener('pointercancel', endDrag);
+
+ballSlider.addEventListener('input', function(){ st.ball = parseFloat(ballSlider.value); update(); });
+document.querySelectorAll('[data-preset]').forEach(function(b){
+  b.addEventListener('click', function(){
+    var k = Number(b.getAttribute('data-preset'));
+    st.preset = k; st.d = PRESETS[k].d; update();
+  });
+});
+
+if('ResizeObserver' in window){ new ResizeObserver(function(){ update(); }).observe(plan); }
+window.addEventListener('resize', update);
+
+// init: start with a "Stride" stance and a ball just outside the static leg-side line
+st.preset = 1; st.d = PRESETS[1].d; st.ball = 0.9;
+update();
+})();
+</script>
+</body>
+</html>

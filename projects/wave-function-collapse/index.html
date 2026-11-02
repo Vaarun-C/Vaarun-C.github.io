@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wave Function Collapse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap">
+<style>
+  :root { --bg: #0b0a0d; --ink: #b8b2c4; --dim: #6c6578; --edge: #2a2631; --hot: #ffd84a; --bad: #ff4d5e; color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; }
+  body { font-family: "Press Start 2P", ui-monospace, Menlo, monospace; font-size: 8px; display: flex; flex-direction: column; }
+  #stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 8px 8px 0; }
+  canvas { display: block; background: #000; border: 1px solid var(--edge); image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer; }
+  #bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 6px 8px 8px; }
+  #status { line-height: 1.7; }
+  #status b { color: var(--hot); font-weight: normal; }
+  #status .bad { color: var(--bad); }
+  #hint { color: var(--dim); }
+  .btns { display: flex; gap: 6px; }
+  button {
+    font: inherit; color: var(--ink); background: #16131b; border: 1px solid var(--edge);
+    padding: 6px 8px; cursor: pointer; box-shadow: 2px 2px 0 #000; white-space: nowrap;
+  }
+  button:hover { color: #fff; border-color: #4a4356; }
+  button:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #000; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c" aria-label="Wave function collapse level generator"></canvas></div>
+<div id="bar">
+  <div><div id="status">loading tiles&hellip;</div><div id="hint">R regen &middot; S speed &middot; space/tap pause</div></div>
+  <div class="btns"><button id="regen" type="button">REGEN</button><button id="speed" type="button">SPEED 1X</button></div>
+</div>
+<script>
+(() => {
+  // ---- Port of WFC.py ----
+  const RULES = {"wall_25.png":{"top":["wall_25.png","pillar_0.png","spike_0.png","box_0.png","background_dark_0.png","lava_0.png","chain_0.png","chain_1.png"],"right":["wall_25.png","background_dark_0.png","ledge_1.png","pillar_0.png","pillar_1.png","spike_0.png","box_0.png","chain_1.png","chain_0.png","lava_0.png"],"left":["wall_25.png","background_dark_0.png","pillar_0.png","pillar_1.png","spike_0.png","box_0.png","chain_1.png","chain_0.png","lava_0.png","ledge_1.png"],"down":["wall_25.png","box_0.png","background_dark_0.png","chain_1.png","pillar_1.png"]},"spike_0.png":{"top":["background_dark_0.png"],"right":["wall_25.png","background_dark_0.png","pillar_0.png","pillar_1.png","spike_0.png","box_0.png"],"left":["wall_25.png","background_dark_0.png","pillar_0.png","pillar_1.png","spike_0.png","box_0.png","ledge_1.png"],"down":["wall_25.png"]},"pillar_0.png":{"top":["background_dark_0.png","pillar_1.png"],"right":["wall_25.png","background_dark_0.png","pillar_0.png","spike_0.png","box_0.png"],"left":["wall_25.png","background_dark_0.png","pillar_0.png","spike_0.png","box_0.png","ledge_1.png"],"down":["wall_25.png"]},"pillar_1.png":{"top":["wall_25.png"],"right":["wall_25.png","background_dark_0.png","pillar_0.png","pillar_1.png","spike_0.png","box_0.png"],"left":["wall_25.png","background_dark_0.png","pillar_0.png","pillar_1.png","spike_0.png","box_0.png","ledge_1.png"],"down":["background_dark_0.png","pillar_0.png"]},"ledge_1.png":{"top":["background_dark_0.png","box_0.png"],"right":["background_dark_0.png","spike_0.png","box_0.png","chain_0.png","chain_1.png","pillar_0.png","pillar_1.png"],"left":["wall_25.png"],"down":["background_dark_0.png","lava_0.png"]},"box_0.png":{"top":["wall_25.png","background_dark_0.png","box_0.png","chain_0.png","chain_1.png"],"right":["wall_25.png","background_dark_0.png","pillar_0.png","pillar_1.png","spike_0.png","box_0.png"],"left":["wall_25.png","background_dark_0.png","pillar_0.png","pillar_1.png","spike_0.png","box_0.png"],"down":["wall_25.png","ledge_1.png","box_0.png"]},"background_dark_0.png":{"top":["background_dark_0.png","ledge_1.png","wall_25.png","chain_1.png","chain_0.png","pillar_1.png"],"right":["background_dark_0.png","box_0.png","pillar_0.png","spike_0.png","wall_25.png","chain_1.png","chain_0.png"],"left":["background_dark_0.png","box_0.png","ledge_1.png","pillar_0.png","spike_0.png","wall_25.png","chain_1.png","chain_0.png"],"down":["background_dark_0.png","box_0.png","ledge_1.png","pillar_0.png","spike_0.png","wall_25.png","lava_0.png"]},"chain_1.png":{"top":["wall_25.png"],"right":["background_dark_0.png","wall_25.png","chain_0.png","chain_1.png"],"left":["background_dark_0.png","wall_25.png","chain_1.png","chain_0.png","ledge_1.png"],"down":["background_dark_0.png","chain_0.png","lava_0.png","wall_25.png","box_0.png"]},"chain_0.png":{"top":["chain_1.png","chain_0.png"],"right":["background_dark_0.png","wall_25.png","chain_0.png","chain_1.png"],"left":["background_dark_0.png","wall_25.png","chain_0.png","chain_1.png","ledge_1.png"],"down":["background_dark_0.png","chain_0.png","lava_0.png","wall_25.png","box_0.png"]},"lava_0.png":{"top":["background_dark_0.png","chain_0.png","chain_1.png","ledge_1.png"],"right":["lava_0.png","wall_25.png"],"left":["lava_0.png","wall_25.png"],"down":["wall_25.png"]}};
+  const canvas_height = 14, canvas_width = 17;
+  const MAX_COUNTER_START = 10000;
+
+  let entropy_grid, grid;
+
+  // Seeded RNG so a run found in the background can be replayed exactly on screen.
+  let rand = Math.random;
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  // Shannon entropy of a uniform superposition: -sum(p*log2 p) == log2(n)
+  function calculate_entropy(num_states) {
+    if (num_states <= 1) return 0;
+    const p = 1 / num_states;
+    let e = 0;
+    for (let i = 0; i < num_states; i++) e -= p * Math.log2(p);
+    return e;
+  }
+
+  // Strict '<' over row-major scan: ties go to the top-left-most cell. Cells with
+  // entropy < 1 (0 or 1 states) are treated as collapsed, as in the original.
+  function get_min_entropy_cell() {
+    let min_cell = [0, 0], min_ent = Infinity;
+    for (let i = 0; i < canvas_height; i++)
+      for (let j = 0; j < canvas_width; j++) {
+        const e = entropy_grid[i][j];
+        if (e < min_ent && Math.floor(Math.abs(e)) > 0) { min_cell = [i, j]; min_ent = e; }
+      }
+    return min_cell;
+  }
+
+  function init() {
+    const all = Object.keys(RULES);
+    const e0 = calculate_entropy(all.length);
+    entropy_grid = []; grid = [];
+    for (let i = 0; i < canvas_height; i++) {
+      entropy_grid.push(new Array(canvas_width).fill(e0));
+      grid.push(new Array(canvas_width).fill(all));
+    }
+  }
+
+  const DIRS = { '-1,0': 'top', '1,0': 'down', '0,-1': 'left', '0,1': 'right' };
+  function direction(dx, dy) {
+    const r = DIRS[dx + ',' + dy];
+    if (!r) throw new Error('Unknown direction: ' + dx + ',' + dy);
+    return r;
+  }
+
+  function get_possible_states([x, y], dir) {
+    const possible = [];
+    for (const state of grid[x][y])
+      for (const n of RULES[state][dir]) if (!possible.includes(n)) possible.push(n);
+    return possible;
+  }
+
+  function valid_direcs([x, y]) {
+    const out = [];
+    if (x - 1 >= 0) out.push([-1, 0]);
+    if (x + 1 < canvas_height) out.push([1, 0]);
+    if (y - 1 >= 0) out.push([0, -1]);
+    if (y + 1 < canvas_width) out.push([0, 1]);
+    return out;
+  }
+
+  // Visualisation hooks (not in the original): which cells changed, first emptied cell.
+  let touched, firstEmpty;
+
+  function constrain([x, y], state_to_remove) {
+    const cur = grid[x][y].slice();
+    cur.splice(cur.indexOf(state_to_remove), 1);
+    grid[x][y] = cur;
+    entropy_grid[x][y] = calculate_entropy(cur.length);
+    touched.add(x * canvas_width + y);
+    if (cur.length === 0 && !firstEmpty) firstEmpty = [x, y];
+  }
+
+  // DFS propagation, identical structure to propogate_constraints()
+  function propogate_constraints(coords) {
+    const stack = [coords];
+    const inStack = (nx, ny) => stack.some(c => c[0] === nx && c[1] === ny);
+    while (stack.length > 0) {
+      const curr = stack.pop();
+      const [x, y] = curr;
+      for (const [dx, dy] of valid_direcs(curr)) {
+        const nx = x + dx, ny = y + dy;
+        const neigh_states = grid[nx][ny].slice();
+        const possible = get_possible_states(curr, direction(dx, dy));
+        for (const s of neigh_states) {
+          if (!possible.includes(s)) {
+            constrain([nx, ny], s);
+            if (!inStack(nx, ny)) stack.push([nx, ny]);
+          }
+        }
+      }
+    }
+  }
+
+  function collapse_at([x, y]) {
+    const states = grid[x][y];
+    grid[x][y] = [states[Math.floor(rand() * states.length)]];
+    entropy_grid[x][y] = 0.0;
+  }
+
+  function is_wave_collapsed() {
+    for (const row of entropy_grid) for (const e of row) if (Math.abs(e) !== 0) return false;
+    return true;
+  }
+
+  function reached_valid_state() {
+    for (const row of grid) for (const c of row) if (c.length === 0) return false;
+    return true;
+  }
+
+  // ---- Step-wise driver (replaces the blocking while-loops of start_execution) ----
+  const MODE = { RUN: 0, CONTRA: 1, DONE: 2 };
+  let mode, pending, steps, attempts, counter, holdUntil, lastCollapsed, view;
+  let flashAt = 0;
+  let paused = false;
+
+  // The original succeeds on under 1% of attempts, so watching every retry takes
+  // minutes. Instead: silently try seeds until one succeeds (same algorithm, same
+  // failure rate), then animate the last two failures and the winning attempt.
+  let queue = [], skipped = 0;
+  function simulate(seed) {
+    rand = mulberry32(seed);
+    init();
+    let cell = get_min_entropy_cell();
+    for (;;) {
+      touched = new Set(); firstEmpty = null;
+      collapse_at(cell);
+      propogate_constraints(cell);
+      if (firstEmpty) return false;
+      if (is_wave_collapsed()) return reached_valid_state();
+      cell = get_min_entropy_cell();
+    }
+  }
+  function planRun() {
+    const failed = [];
+    let seed = (Math.random() * 2 ** 31) | 0;
+    while (failed.length < MAX_COUNTER_START && !simulate(seed)) failed.push(seed++);
+    queue = [...failed.slice(-2), seed];
+    skipped = Math.max(0, failed.length - 2);
+  }
+
+  function beginAttempt() {
+    rand = mulberry32(queue.shift());
+    init();
+    touched = new Set(); firstEmpty = null;
+    pending = get_min_entropy_cell();
+    lastCollapsed = null; steps = 0; mode = MODE.RUN; view = null;
+  }
+
+  function regenerate() {
+    planRun();
+    attempts = skipped + 1; counter = MAX_COUNTER_START;
+    beginAttempt();
+  }
+
+  function step(now) {
+    if (mode !== MODE.RUN) return;
+    touched = new Set(); firstEmpty = null;
+    collapse_at(pending);
+    propogate_constraints(pending);
+    lastCollapsed = pending; flashAt = now; steps++;
+
+    if (firstEmpty) {
+      // In the original an empty superposition makes reached_valid_state() fail and the
+      // run restarts. We stop at the first empty cell (same outcome, earlier) and freeze
+      // the grid as it is so the contradiction is visible.
+      view = grid.map(r => r.slice());
+      mode = MODE.CONTRA; holdUntil = now + 500;
+      return;
+    }
+    if (is_wave_collapsed()) {
+      mode = reached_valid_state() ? MODE.DONE : MODE.CONTRA;
+      holdUntil = now + (mode === MODE.DONE ? 6000 : 500);
+      pending = null;
+      return;
+    }
+    pending = get_min_entropy_cell();
+  }
+
+  // ---- Rendering ----
+  const T = 48; // tile px on the backing canvas (tiles are 16x16, drawn at 3x)
+  const cvs = document.getElementById('c');
+  cvs.width = canvas_width * T; cvs.height = canvas_height * T;
+  const ctx = cvs.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const MAX_E = calculate_entropy(Object.keys(RULES).length);
+  const images = {};
+
+  function render(now) {
+    const g = view || grid;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '13px "Space Mono", ui-monospace, monospace';
+    for (let i = 0; i < canvas_height; i++) {
+      for (let j = 0; j < canvas_width; j++) {
+        const s = g[i][j], x = j * T, y = i * T;
+        if (s.length === 1) {
+          ctx.drawImage(images[s[0]], x, y, T, T);
+        } else if (s.length === 0) {
+          ctx.fillStyle = '#3a0d14'; ctx.fillRect(x, y, T, T);
+        } else {
+          const e = calculate_entropy(s.length);
+          // lower entropy -> brighter cell: you can see certainty spread from collapses
+          const k = 1 - e / MAX_E;
+          ctx.fillStyle = `rgb(${18 + k * 70 | 0},${15 + k * 45 | 0},${26 + k * 90 | 0})`;
+          ctx.fillRect(x, y, T, T);
+          ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.strokeRect(x + .5, y + .5, T - 1, T - 1);
+          ctx.fillStyle = `rgba(220,210,240,${0.28 + k * 0.4})`;
+          ctx.fillText(e.toFixed(2), x + T / 2, y + T / 2 + 1);
+        }
+      }
+    }
+    // propagation flash: cells whose superposition shrank during the last step
+    const age = (now - flashAt) / 450;
+    if (mode === MODE.RUN && age < 1 && touched) {
+      ctx.fillStyle = `rgba(90,200,255,${0.32 * (1 - age)})`;
+      for (const idx of touched) {
+        const i = (idx / canvas_width) | 0, j = idx % canvas_width;
+        if (g[i][j].length > 1) ctx.fillRect(j * T, i * T, T, T);
+      }
+    }
+    ctx.lineWidth = 3;
+    if (lastCollapsed && mode !== MODE.DONE) {
+      ctx.strokeStyle = mode === MODE.CONTRA ? '#ff4d5e' : 'rgba(255,255,255,0.55)';
+      ctx.strokeRect(lastCollapsed[1] * T + 1.5, lastCollapsed[0] * T + 1.5, T - 3, T - 3);
+    }
+    if (mode === MODE.RUN && pending) {
+      const pulse = 0.6 + 0.4 * Math.sin(now / 120);
+      ctx.fillStyle = `rgba(255,216,74,${0.18 * pulse})`;
+      ctx.fillRect(pending[1] * T, pending[0] * T, T, T);
+      ctx.strokeStyle = `rgba(255,216,74,${pulse})`;
+      ctx.strokeRect(pending[1] * T + 1.5, pending[0] * T + 1.5, T - 3, T - 3);
+    }
+    if (mode === MODE.CONTRA && firstEmpty) {
+      ctx.strokeStyle = '#ff4d5e'; ctx.setLineDash([6, 4]);
+      ctx.strokeRect(firstEmpty[1] * T + 1.5, firstEmpty[0] * T + 1.5, T - 3, T - 3);
+      ctx.setLineDash([]);
+    }
+    if (mode === MODE.CONTRA) {
+      ctx.fillStyle = 'rgba(40,0,8,0.35)'; ctx.fillRect(0, 0, cvs.width, cvs.height);
+    }
+    ctx.lineWidth = 1;
+  }
+
+  const statusEl = document.getElementById('status');
+  let lastStatus = '';
+  function updateStatus() {
+    let collapsed = 0;
+    for (const r of grid) for (const c of r) if (c.length === 1) collapsed++;
+    const total = canvas_width * canvas_height;
+    let s;
+    if (mode === MODE.CONTRA) s = `<span class="bad">CONTRADICTION</span> &middot; restarting (try ${attempts + 1})`;
+    else if (mode === MODE.DONE) s = `<b>LEVEL DONE</b> &middot; ${steps} collapses &middot; try ${attempts}`;
+    else s = `step <b>${steps}</b> &middot; ${collapsed}/${total} fixed &middot; try ${attempts}${skipped && attempts === skipped + 1 ? ` (${skipped} failed tries skipped)` : ''}${paused ? ' &middot; <b>PAUSED</b>' : ''}`;
+    if (s !== lastStatus) { statusEl.innerHTML = s; lastStatus = s; }
+  }
+
+  // ---- Controls ----
+  const SPEEDS = [{ label: '1X', rate: 30 }, { label: '3X', rate: 90 }, { label: 'MAX', rate: 600 }];
+  let speedIdx = 0;
+  const speedBtn = document.getElementById('speed');
+  function cycleSpeed() { speedIdx = (speedIdx + 1) % SPEEDS.length; speedBtn.textContent = 'SPEED ' + SPEEDS[speedIdx].label; }
+  speedBtn.addEventListener('click', cycleSpeed);
+  document.getElementById('regen').addEventListener('click', () => { paused = false; regenerate(); });
+  cvs.addEventListener('click', () => { paused = !paused; });
+  addEventListener('keydown', e => {
+    if (e.key === 'r' || e.key === 'R') { paused = false; regenerate(); }
+    else if (e.key === 's' || e.key === 'S') cycleSpeed();
+    else if (e.key === ' ') { paused = !paused; e.preventDefault(); }
+  });
+
+  function fit() {
+    const stage = document.getElementById('stage');
+    const aw = stage.clientWidth - 16, ah = stage.clientHeight - 8;
+    const s = Math.max(0.1, Math.min(aw / cvs.width, ah / cvs.height));
+    cvs.style.width = Math.floor(cvs.width * s) + 'px';
+    cvs.style.height = Math.floor(cvs.height * s) + 'px';
+  }
+  addEventListener('resize', fit);
+
+  // ---- Main loop ----
+  let acc = 0, last = 0;
+  function frame(now) {
+    const dt = Math.min(now - last, 250); last = now;
+    if (!paused) {
+      if (mode === MODE.RUN) {
+        acc += dt * SPEEDS[speedIdx].rate / 1000;
+        while (acc >= 1 && mode === MODE.RUN) { step(now); acc -= 1; }
+        if (mode !== MODE.RUN) acc = 0;
+      } else if (now >= holdUntil) {
+        if (mode === MODE.CONTRA) {
+          // start_execution(): retry until valid or MAX_COUNTER exhausted
+          counter--; attempts++;
+          if (counter <= 0 || !queue.length) regenerate(); else beginAttempt();
+        } else {
+          regenerate(); // original waits for 'r'; the demo auto-replays
+        }
+      }
+    }
+    render(now);
+    updateStatus();
+    requestAnimationFrame(frame);
+  }
+
+  const names = Object.keys(RULES);
+  let loaded = 0;
+  for (const n of names) {
+    const im = new Image();
+    im.onload = () => { if (++loaded === names.length) start(); };
+    im.onerror = () => { statusEl.textContent = 'failed to load tileset/' + n; };
+    im.src = 'tileset/' + n;
+    images[n] = im;
+  }
+  function start() {
+    regenerate();
+    fit();
+    last = performance.now();
+    requestAnimationFrame(frame);
+  }
+  fit();
+})();
+</script>
+</body>
+</html>

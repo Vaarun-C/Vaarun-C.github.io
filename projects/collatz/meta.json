@@ -1,0 +1,10 @@
+{
+  "title": "Collatz Spiral",
+  "tagline": "Hailstone paths spiralling into one picture",
+  "description": "Every starting number takes its own hailstone path down to 1, turning left on even numbers and right on odd ones. Drawing all of them from the same point builds a spiral of overlapping paths that keeps growing, port of the pyglet visualisation in the original repo. Pick a range and a speed and watch the picture fill in.",
+  "tech": ["JavaScript", "Canvas 2D"],
+  "section": "creative",
+  "kind": "sim",
+  "repo": "https://github.com/Vaarun-C/collatz-conjecture",
+  "controls": "Range & speed sliders · Space or tap canvas to pause"
+}

@@ -1,0 +1,21 @@
+{
+ "title": "Athena",
+ "tagline": "A memory graph that answers with receipts",
+ "description": "Athena is a personal assistant built on a temporal knowledge graph that outlives every chat. Its Ask screen searches the graph, checks open commitments, reads the source notes, then writes an answer only from numbered records, each one cited. The demo runs the same stages over a small fictional graph.",
+ "tech": [
+  "d3.js",
+  "Graphiti",
+  "Neo4j",
+  "Python",
+  "Modal"
+ ],
+ "kind": "ml",
+ "repo": "https://github.com/Vaarun-C/Athena",
+ "controls": "Tap a question or type one · Drag nodes · Tap a [n] citation to trace it",
+ "context": "Personal project",
+ "highlights": [
+  "Personal knowledge graph in Neo4j: people, orgs, projects, commitments and source notes",
+  "Multi-stage ask pipeline: query rewrite, hybrid retrieval (embeddings + BM25), graph traversal, cited answer",
+  "Eval suite for retrieval and answer quality; deployed on Modal"
+ ]
+}

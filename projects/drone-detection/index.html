@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drone detection: live array</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #070a0e; overflow: hidden; }
+  body { font-family: "IBM Plex Mono", monospace; }
+  canvas { display: block; position: absolute; left: 0; top: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+  noscript { color: #d4f2dd; padding: 16px; display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Live simulation of a drone localised by a four-microphone array"></canvas>
+<noscript>This demo needs JavaScript.</noscript>
+<script src="dsp.js"></script>
+<script src="scene.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

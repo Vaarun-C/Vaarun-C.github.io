@@ -1,0 +1,21 @@
+{
+ "title": "Modal Agents",
+ "tagline": "Two agents work out how to talk",
+ "description": "Two Qwen3-4B agents, each in its own Modal Sandbox, get one goal: establish efficient communication with the other agent. They can read docs, keep a scratchpad, rewrite and restart themselves, and train their own LoRA adapters. This is an illustrative replay, scripted from the project's code and tools rather than a recorded run.",
+ "tech": [
+  "Modal",
+  "vLLM",
+  "Qwen3-4B",
+  "LoRA",
+  "Python"
+ ],
+ "kind": "ml",
+ "repo": null,
+ "controls": "Space play/pause · ←/→ seek 3s · drag timeline · speed button",
+ "context": "Research experiment",
+ "highlights": [
+  "Two Qwen3-4B agents served with vLLM, each in its own Modal Sandbox, with one open-ended goal",
+  "Agents can edit and restart their own code, with supervisor rollback when a self-edit breaks them",
+  "Self-training loop: agents build datasets, fine-tune LoRA adapters and hot-load them into the shared model server"
+ ]
+}

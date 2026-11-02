@@ -1,0 +1,15 @@
+{
+  "title": "Puzzle Solvers",
+  "tagline": "Sudoku backtracking and Wordle/Primel narrowing.",
+  "description": "Two ports in one window. The sudoku tab runs the box-elimination pass from a sudoku image solver, then animates backtracking over an editable grid. The Wordle and Primel tabs port the narrowing logic from the Wordle-and-Primel guesser: enter a guess, colour its tiles to match the game, and watch the candidates shrink (the Wordle repo is github.com/Vaarun-C/Wordle-and-Primel-Guesser).",
+  "tech": [
+    "JavaScript",
+    "CSS grid",
+    "Backtracking",
+    "Constraint narrowing"
+  ],
+  "section": "creative",
+  "kind": "game",
+  "repo": "https://github.com/Vaarun-C/sudoku-solver",
+  "controls": "Click cells to type · SOLVE/STEP/SPEED · WORDLE & PRIMEL: type, SUBMIT, tap tiles to colour"
+}

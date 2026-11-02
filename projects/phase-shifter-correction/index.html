@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase-Shifter Correction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0e12; --panel:#121820; --panel2:#171f29; --line:#243041;
+  --ink:#e7ecf2; --muted:#8190a3; --before:#ff8a73; --after:#5fe3c4; --warn:#ffd27a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:12px/1.4 Inter,system-ui,-apple-system,sans-serif;overflow:hidden;-webkit-text-size-adjust:100%}
+button,input{font:inherit;color:inherit}
+.app{height:100%;display:flex;flex-direction:column;padding:10px 12px 8px;gap:8px;min-height:0}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.title{font-weight:600;font-size:13px;margin:0}
+.tag{font:500 9.5px/1 "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--warn);border:1px solid #5a4b25;padding:4px 6px;white-space:nowrap}
+
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(170px,0.95fr) minmax(0,1.5fr);gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:0;min-width:0;display:flex;flex-direction:column;gap:6px}
+.lbl{font:500 9.5px/1 "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+
+.dialwrap{display:flex;justify-content:center;align-items:center;flex:0 1 auto;min-height:0}
+#dial{width:min(100%,150px);height:auto;aspect-ratio:1/1;touch-action:none;cursor:grab;outline:none;display:block}
+#dial:focus-visible{outline:1px dashed var(--after);outline-offset:4px;border-radius:50%}
+#dial:active{cursor:grabbing}
+
+.states{display:flex;flex-direction:column;gap:5px}
+.srow{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;align-items:center}
+.srow .k{font:500 9.5px/1 "JetBrains Mono",monospace;color:var(--muted);text-transform:uppercase}
+.bits{display:flex;gap:3px}
+.bit{width:17px;height:17px;border:1px solid var(--line);font:500 10px/15px "JetBrains Mono",monospace;text-align:center;color:var(--muted);background:#0e141b;border-radius:3px}
+.bit.on{background:#1d3b36;border-color:var(--after);color:var(--after)}
+.bit.on.before{background:#3f2a24;border-color:var(--before);color:var(--before)}
+.num{font:400 11px/1.3 "JetBrains Mono",monospace;color:var(--ink);grid-column:1 / -1}
+.num .neg{color:var(--before)}
+.num .pos{color:var(--after)}
+
+.chartcard{position:relative}
+.chartbox{flex:1;min-height:90px;position:relative}
+#chart{position:absolute;inset:0;width:100%;height:100%;display:block}
+.legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:10.5px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+
+.lower{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start}
+.mask{display:grid;grid-template-columns:repeat(8,9px);gap:2px}
+.mask span{width:9px;height:9px;border-radius:2px;background:#1a232e;display:block}
+.mask span.on{background:var(--after)}
+.stats{display:grid;grid-template-columns:auto auto auto;gap:2px 10px;font:400 10.5px/1.45 "JetBrains Mono",monospace;align-items:baseline}
+.stats .h{color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
+.stats .v{color:var(--ink)}
+.stats .a{color:var(--after)}
+.stats .b{color:var(--before)}
+
+.pred{font:400 11px/1.45 "JetBrains Mono",monospace;color:var(--ink)}
+.pred b{color:var(--after);font-weight:500}
+
+.foot{display:flex;flex-direction:column;gap:6px;font-size:10.5px;color:var(--muted)}
+.frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.frow input[type=range]{flex:1 1 140px;min-width:100px;accent-color:var(--after)}
+.btn{height:26px;padding:0 9px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:5px;cursor:pointer;touch-action:manipulation;white-space:nowrap;font-size:11px}
+.btn:hover{border-color:var(--after)}
+.btn:active{transform:translateY(1px)}
+.status{font:400 10px/1.3 "JetBrains Mono",monospace;color:var(--muted)}
+.model{line-height:1.45}
+.model b{color:var(--ink);font-weight:500}
+
+@media (max-width:560px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100%}
+  .main{grid-template-columns:1fr}
+  .chartbox{min-height:150px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <p class="title">Phase-shifter correction</p>
+    <span class="tag">Simulated chip · real search</span>
+  </div>
+
+  <div class="main">
+    <section class="card">
+      <div class="lbl">Desired phase</div>
+      <div class="dialwrap">
+        <svg id="dial" viewBox="0 0 160 160" role="slider" tabindex="0" aria-label="Desired phase in degrees" aria-valuemin="0" aria-valuemax="359" aria-valuenow="123">
+          <circle cx="80" cy="80" r="62" fill="#0e141b" stroke="#243041" stroke-width="1"/>
+          <g id="ticks"></g>
+          <line id="needle" x1="80" y1="80" x2="80" y2="26" stroke="#ffd27a" stroke-width="2" stroke-linecap="round"/>
+          <circle id="hub" cx="80" cy="80" r="4" fill="#ffd27a"/>
+          <circle id="ghostA" r="4" fill="none" stroke="#ff8a73" stroke-width="1.5" opacity="0.9"/>
+          <circle id="ghostB" r="4" fill="none" stroke="#5fe3c4" stroke-width="1.5" opacity="0.9"/>
+        </svg>
+      </div>
+      <div class="num mono" style="text-align:center;font-size:15px;color:var(--warn)" id="theta">123.0&deg;</div>
+
+      <div class="states">
+        <div class="srow">
+          <span class="k">Uncorrected</span>
+          <div class="bits" id="bitsB"></div>
+          <div class="num" id="rowB"></div>
+        </div>
+        <div class="srow">
+          <span class="k">Corrected</span>
+          <div class="bits" id="bitsA"></div>
+          <div class="num" id="rowA"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card chartcard">
+      <div class="legend">
+        <span><i style="background:var(--before)"></i>before</span>
+        <span><i style="background:var(--after)"></i>after trim</span>
+        <span id="freqLbl" class="mono">6.20 GHz</span>
+      </div>
+      <div class="chartbox"><canvas id="chart" aria-label="Phase error for each of the 64 target states, before and after correction"></canvas></div>
+      <div class="lower">
+        <div>
+          <div class="lbl" style="margin-bottom:4px">Trimmed states</div>
+          <div class="mask" id="mask"></div>
+        </div>
+        <div>
+          <div class="pred" id="pred"></div>
+          <div class="stats" style="margin-top:6px">
+            <span class="h"></span><span class="h">band</span><span class="h">held-out</span>
+            <span class="h">RMS before</span><span class="v b" id="rmsB1">-</span><span class="v b" id="rmsB2">-</span>
+            <span class="h">RMS after</span><span class="v a" id="rmsA1">-</span><span class="v a" id="rmsA2">-</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="foot">
+    <div class="frow">
+      <span class="lbl">Freq</span>
+      <input id="freq" type="range" min="0" max="100" step="1" value="50" aria-label="Frequency">
+      <button class="btn" id="newChip" type="button">New chip</button>
+    </div>
+    <div class="status" id="status">simulating chip...</div>
+    <div class="model">
+      <b>Model.</b> A genetic search (a JavaScript port of the repo's objective, not its trained weights) picks one phase trim in 0 to 5.625&deg; and the subset of states it applies to. Its score is the nearest-state RMS error over the 51-point band, and the 50 out-of-band points are a held-out check. The repo's measured S21 CSVs are gitignored, so the chip here is simulated from a bit-weight model; the repo's saved runs report RMS 0.78 to 6.14&deg;.
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ---------- constants (repo: 6 bits, 5.625 deg LSB, 51-point band, phase restriction 5.625) ----------
+var NB = 6, NS = 64, LSB = 5.625, NF = 101, FC = 50, HALF = 25;
+var PHASE_MAX = 5.625;
+var POP = 100, GENS = 120, ELITES = 4;
+
+// ---------- helpers ----------
+function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(r){ var u = 0, v = 0; while(!u) u = r(); while(!v) v = r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function wrap360(x){ x %= 360; return x < 0 ? x + 360 : x; }
+function wrap180(x){ return ((x + 180) % 360 + 360) % 360 - 180; }
+function fGHz(k){ return 5.2 + 0.02*k; }
+function inBand(k){ return k >= FC - HALF && k <= FC + HALF; }
+function fmt(x, d){ return (x >= 0 ? '+' : '') + x.toFixed(d === undefined ? 2 : d); }
+
+// ---------- simulated chip: per-bit weights with gain error, frequency slope, offset, noise ----------
+function simulateChip(seed){
+  var r = mulberry32(seed);
+  var e = [], sl = [], o = [];
+  for(var b = 0; b < NB; b++){ e.push(0.02*gauss(r)); sl.push(0.03*gauss(r)); o.push(0.25*gauss(r)); }
+  var phi = [];
+  for(var k = 0; k < NF; k++){
+    var df = fGHz(k) - fGHz(FC);
+    var W = [];
+    for(var bb = 0; bb < NB; bb++) W.push(LSB*Math.pow(2, bb)*(1 + e[bb] + sl[bb]*df) + o[bb]);
+    var row = new Float64Array(NS);
+    for(var s = 0; s < NS; s++){
+      var a = 0;
+      for(var q = 0; q < NB; q++) if((s >> q) & 1) a += W[q];
+      row[s] = wrap360(a + 0.12*gauss(r));
+    }
+    phi.push(row);
+  }
+  return phi;
+}
+
+// ---------- solver: nearest-state RMS objective (same rule as the repo's compute_error_single_freq) ----------
+function Solver(phi){
+  this.phi = phi;
+  this.ord = phi.map(function(row){
+    var a = []; for(var i = 0; i < NS; i++) a.push(i);
+    a.sort(function(x, y){ return row[x] - row[y]; });
+    return Int32Array.from(a);
+  });
+  this.E = new Float64Array(NS);
+  this.S = new Float64Array(3*NS);
+  this.SI = new Int32Array(3*NS);
+  this.buf = new Float64Array(NS);
+}
+// corrected angles of all 64 states at frequency k
+Solver.prototype.angles = function(k, mask, p, out){
+  var row = this.phi[k], E = out || new Float64Array(NS);
+  for(var s = 0; s < NS; s++){
+    var a = row[s] + (mask[s] ? p : 0);
+    E[s] = a - 360*Math.floor(a/360);
+  }
+  return E;
+};
+// nearest-state error for all 64 targets at frequency k (writes into out)
+Solver.prototype.errors = function(k, mask, p, out){
+  var E = this.angles(k, mask, p, this.E), ord = this.ord[k];
+  // insertion sort (order is nearly sorted between evaluations)
+  for(var i = 1; i < NS; i++){
+    var v = ord[i], ev = E[v], j = i - 1;
+    while(j >= 0 && E[ord[j]] > ev){ ord[j+1] = ord[j]; j--; }
+    ord[j+1] = v;
+  }
+  var S = this.S;
+  for(var q = 0; q < NS; q++){
+    var a = E[ord[q]];
+    S[q] = a - 360; S[q+NS] = a; S[q+2*NS] = a + 360;
+  }
+  var j2 = 0, L = S.length;
+  for(var t = 0; t < NS; t++){
+    var tg = LSB*t;
+    while(j2 < L && S[j2] < tg) j2++;
+    var best = null, bd = 1e9;
+    if(j2 - 1 >= 0){ var d1 = Math.abs(tg - S[j2-1]); if(d1 < bd){ bd = d1; best = S[j2-1]; } }
+    if(j2 < L){ var d2 = Math.abs(tg - S[j2]); if(d2 < bd){ bd = d2; best = S[j2]; } }
+    out[t] = wrap180(tg - best);
+  }
+  return out;
+};
+Solver.prototype.rms = function(ks, mask, p){
+  var tot = 0, buf = this.buf;
+  for(var i = 0; i < ks.length; i++){
+    this.errors(ks[i], mask, p, buf);
+    var s = 0; for(var t = 0; t < NS; t++) s += buf[t]*buf[t];
+    tot += Math.sqrt(s/NS);
+  }
+  return tot / ks.length;
+};
+
+// nearest state to an angle among the given state angles
+function nearestState(E, theta){
+  var best = 0, bd = 1e9;
+  for(var s = 0; s < NS; s++){
+    var d = Math.abs(wrap180(theta - E[s]));
+    if(d < bd){ bd = d; best = s; }
+  }
+  return best;
+}
+
+// ---------- genetic search over (trim phase p, state mask) on the band; async, one generation per tick ----------
+function search(solver, ks, seed, onGen, done){
+  var r = mulberry32(seed), pop = [], g = 0;
+  for(var i = 0; i < POP; i++){
+    var m = new Uint8Array(NS);
+    for(var s = 0; s < NS; s++) m[s] = r() < 0.5 ? 1 : 0;
+    var p = r()*PHASE_MAX;
+    pop.push({ m: m, p: p, f: solver.rms(ks, m, p) });
+  }
+  function tour(){
+    var best = null;
+    for(var q = 0; q < 3; q++){ var c = pop[Math.floor(r()*POP)]; if(!best || c.f < best.f) best = c; }
+    return best;
+  }
+  function step(){
+    pop.sort(function(a, b){ return a.f - b.f; });
+    onGen(g, pop[0]);
+    if(g >= GENS){ done(pop[0]); return; }
+    var frac = g / GENS;
+    var mr = 0.3 + (0.02 - 0.3)*frac;      // mutation rate, anneals 0.3 -> 0.02 (repo: mutation_rate_init/final)
+    var sig = 0.8*(1 - frac) + 0.03;       // trim-phase step, degrees
+    var next = pop.slice(0, ELITES);
+    while(next.length < POP){
+      var a = tour(), b = tour();
+      var cross = r() < 0.85;               // repo: crossover_rate 0.85
+      var m = new Uint8Array(NS);
+      for(var s = 0; s < NS; s++){
+        var v = cross ? (r() < 0.5 ? a.m[s] : b.m[s]) : a.m[s];
+        if(r() < mr) v ^= 1;
+        m[s] = v;
+      }
+      var p = cross ? (r() < 0.5 ? a.p : b.p) : a.p;
+      p = Math.min(PHASE_MAX, Math.max(0, p + sig*gauss(r)));
+      next.push({ m: m, p: p, f: solver.rms(ks, m, p) });
+    }
+    pop = next; g++;
+    setTimeout(step, 0);
+  }
+  step();
+}
+
+// ---------- state ----------
+var BAND = [], OUT = [];
+for(var kk = 0; kk < NF; kk++) (inBand(kk) ? BAND : OUT).push(kk);
+var ZERO = new Uint8Array(NS);
+var st = {
+  k: FC, theta: 123.0, seed: 2024,
+  solver: null, mask: ZERO, p: 0, searched: false,
+  rmsB1: 0, rmsB2: 0, rmsA1: 0, rmsA2: 0, gen: 0, bestF: 0, running: false
+};
+
+// ---------- DOM ----------
+var $ = function(id){ return document.getElementById(id); };
+var dial = $('dial'), needle = $('needle'), ghostA = $('ghostA'), ghostB = $('ghostB');
+var chart = $('chart'), ctx = chart.getContext('2d');
+var freq = $('freq'), newChip = $('newChip'), statusEl = $('status');
+
+// ticks: one per target state (every 5.625 deg), bigger every 45 deg
+(function(){
+  var g = $('ticks'), ns = 'http://www.w3.org/2000/svg';
+  for(var t = 0; t < NS; t++){
+    var a = (LSB*t) * Math.PI/180;
+    var big = t % 8 === 0;
+    var r1 = big ? 50 : 54, r2 = 60;
+    var ln = document.createElementNS(ns, 'line');
+    ln.setAttribute('x1', 80 + r1*Math.sin(a)); ln.setAttribute('y1', 80 - r1*Math.cos(a));
+    ln.setAttribute('x2', 80 + r2*Math.sin(a)); ln.setAttribute('y2', 80 - r2*Math.cos(a));
+    ln.setAttribute('stroke', big ? '#4a5a6e' : '#2b3848'); ln.setAttribute('stroke-width', big ? 1.5 : 1);
+    g.appendChild(ln);
+  }
+})();
+
+function setDialAngle(th){
+  th = wrap360(th);
+  st.theta = th;
+  var rad = th*Math.PI/180;
+  needle.setAttribute('x2', 80 + 50*Math.sin(rad));
+  needle.setAttribute('y2', 80 - 50*Math.cos(rad));
+  dial.setAttribute('aria-valuenow', Math.round(th));
+}
+
+// pointer drag on dial (touch and mouse)
+function angleFromEvent(e){
+  var rect = dial.getBoundingClientRect();
+  var x = e.clientX - (rect.left + rect.width/2);
+  var y = e.clientY - (rect.top + rect.height/2);
+  return wrap360(Math.atan2(x, -y) * 180/Math.PI);
+}
+var dragging = false;
+dial.addEventListener('pointerdown', function(e){
+  dragging = true; dial.setPointerCapture(e.pointerId);
+  setDialAngle(angleFromEvent(e)); update();
+});
+dial.addEventListener('pointermove', function(e){
+  if(!dragging) return;
+  setDialAngle(angleFromEvent(e)); update();
+});
+function endDrag(){ dragging = false; }
+dial.addEventListener('pointerup', endDrag);
+dial.addEventListener('pointercancel', endDrag);
+dial.addEventListener('keydown', function(e){
+  var step = e.shiftKey ? 5 : 1, d = 0;
+  if(e.key === 'ArrowRight' || e.key === 'ArrowUp') d = step;
+  else if(e.key === 'ArrowLeft' || e.key === 'ArrowDown') d = -step;
+  else return;
+  e.preventDefault(); setDialAngle(st.theta + d); update();
+});
+freq.addEventListener('input', function(){ st.k = parseInt(freq.value, 10); update(); });
+newChip.addEventListener('click', function(){ startRun(Math.floor(Math.random()*1e9)); });
+
+// ---------- bits and rows ----------
+function bitsHTML(s, cls){
+  var h = '';
+  for(var q = NB-1; q >= 0; q--){
+    var on = (s >> q) & 1;
+    h += '<span class="bit' + (on ? ' on ' + cls : '') + '">' + on + '</span>';
+  }
+  return h;
+}
+function bin6(s){ var t = ''; for(var q = NB-1; q >= 0; q--) t += (s >> q) & 1; return t; }
+
+// ---------- update ----------
+var E0 = new Float64Array(NS), E1 = new Float64Array(NS), ERR0 = new Float64Array(NS), ERR1 = new Float64Array(NS);
+function update(){
+  if(!st.solver) return;
+  var k = st.k, th = st.theta;
+  st.solver.angles(k, ZERO, 0, E0);
+  st.solver.angles(k, st.mask, st.p, E1);
+  var s0 = nearestState(E0, th), s1 = nearestState(E1, th);
+  var e0 = wrap180(th - E0[s0]), e1 = wrap180(th - E1[s1]);
+
+  $('theta').innerHTML = th.toFixed(1) + '&deg;';
+  $('freqLbl').textContent = fGHz(k).toFixed(2) + ' GHz' + (inBand(k) ? ' · in band' : ' · held-out');
+  $('bitsB').innerHTML = bitsHTML(s0, 'before');
+  $('bitsA').innerHTML = bitsHTML(s1, '');
+  $('rowB').innerHTML = 'state ' + s0 + ' &middot; ' + E0[s0].toFixed(2) + '&deg; <span class="neg">err ' + fmt(e0) + '&deg;</span>';
+  $('rowA').innerHTML = 'state ' + s1 + ' &middot; ' + E1[s1].toFixed(2) + '&deg; <span class="pos">err ' + fmt(e1) + '&deg;</span>';
+
+  setDialAngle(th);
+  ghostA.setAttribute('cx', 80 + 50*Math.sin(E0[s0]*Math.PI/180));
+  ghostA.setAttribute('cy', 80 - 50*Math.cos(E0[s0]*Math.PI/180));
+  ghostB.setAttribute('cx', 80 + 50*Math.sin(E1[s1]*Math.PI/180));
+  ghostB.setAttribute('cy', 80 - 50*Math.cos(E1[s1]*Math.PI/180));
+
+  var pr = $('pred');
+  if(st.searched){
+    var nTrim = 0; for(var s = 0; s < NS; s++) nTrim += st.mask[s];
+    pr.innerHTML = 'Predicted correction: <b>' + fmt(st.p) + '&deg;</b> trim<br>' +
+      'applied to <b>' + nTrim + '</b> of 64 states. Repo cap is 5.625&deg;.';
+  } else {
+    pr.textContent = 'Searching for a correction...';
+  }
+
+  // mask grid
+  var mg = $('mask'), cells = mg.children;
+  if(cells.length !== NS){
+    mg.innerHTML = ''; for(var c = 0; c < NS; c++){ var sp = document.createElement('span'); sp.title = 'state ' + c; mg.appendChild(sp); }
+    cells = mg.children;
+  }
+  for(var c2 = 0; c2 < NS; c2++) cells[c2].className = st.mask[c2] ? 'on' : '';
+
+  // stats
+  $('rmsB1').textContent = st.rmsB1.toFixed(2) + '°';
+  $('rmsB2').textContent = st.rmsB2.toFixed(2) + '°';
+  $('rmsA1').textContent = st.searched ? st.rmsA1.toFixed(2) + '°' : '-';
+  $('rmsA2').textContent = st.searched ? st.rmsA2.toFixed(2) + '°' : '-';
+
+  drawChart(k, s0, s1);
+}
+
+// ---------- chart: per-target error before vs after at the chosen frequency ----------
+function targetErrors(E, out){
+  for(var t = 0; t < NS; t++){
+    var tg = LSB*t, s = nearestState(E, tg);
+    out[t] = wrap180(tg - E[s]);
+  }
+  return out;
+}
+var TE0 = new Float64Array(NS), TE1 = new Float64Array(NS);
+function drawChart(k, s0, s1){
+  var dpr = window.devicePixelRatio || 1;
+  var W = chart.clientWidth, H = chart.clientHeight;
+  if(!W || !H) return;
+  if(chart.width !== Math.round(W*dpr) || chart.height !== Math.round(H*dpr)){ chart.width = Math.round(W*dpr); chart.height = Math.round(H*dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  targetErrors(E0, TE0); targetErrors(E1, TE1);
+  var padL = 30, padR = 6, padT = 6, padB = 18;
+  var plotW = W - padL - padR, plotH = H - padT - padB;
+  var YMAX = 6;
+  for(var t = 0; t < NS; t++){ YMAX = Math.max(YMAX, Math.min(9, Math.abs(TE0[t]), Math.abs(TE1[t])), Math.min(9, Math.max(Math.abs(TE0[t]), Math.abs(TE1[t])))); }
+  YMAX = Math.min(9, Math.ceil(YMAX));
+  function yOf(v){ return padT + plotH/2 - (Math.max(-YMAX, Math.min(YMAX, v))/YMAX)*(plotH/2); }
+  function xOf(t){ return padL + (t + 0.5)*plotW/NS; }
+
+  // grid
+  ctx.font = '10px "JetBrains Mono", ui-monospace, monospace';
+  ctx.textBaseline = 'middle';
+  var ticks = [-YMAX, -YMAX/2, 0, YMAX/2, YMAX];
+  for(var i = 0; i < ticks.length; i++){
+    var yy = yOf(ticks[i]);
+    ctx.strokeStyle = ticks[i] === 0 ? '#3a4758' : '#1d2632';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(W - padR, yy); ctx.stroke();
+    ctx.fillStyle = '#6f7d90'; ctx.textAlign = 'right';
+    ctx.fillText((ticks[i] > 0 ? '+' : '') + ticks[i].toFixed(ticks[i] % 1 ? 1 : 0) + '°', padL - 4, yy);
+  }
+  // highlighted target (nearest to dial)
+  var tSel = Math.round(st.theta / LSB) % NS;
+  ctx.fillStyle = 'rgba(255,210,122,0.10)';
+  ctx.fillRect(xOf(tSel) - plotW/NS/2, padT, plotW/NS, plotH);
+
+  // bars
+  var bw = Math.max(1, plotW/NS*0.42);
+  for(var t2 = 0; t2 < NS; t2++){
+    var x = xOf(t2);
+    var y0 = yOf(0);
+    var yb = yOf(TE0[t2]);
+    ctx.fillStyle = 'rgba(255,138,115,0.85)';
+    ctx.fillRect(x - bw - 0.5, Math.min(y0, yb), bw, Math.abs(yb - y0) || 0.5);
+    var ya = yOf(TE1[t2]);
+    ctx.fillStyle = 'rgba(95,227,196,0.95)';
+    ctx.fillRect(x + 0.5, Math.min(y0, ya), bw, Math.abs(ya - y0) || 0.5);
+  }
+  // x labels
+  ctx.fillStyle = '#6f7d90'; ctx.textAlign = 'center';
+  for(var q = 0; q < NS; q += 8){ ctx.fillText(String(q), xOf(q), H - 7); }
+}
+
+// ---------- run ----------
+function startRun(seed){
+  st.seed = seed;
+  st.running = true; st.searched = false;
+  st.mask = ZERO; st.p = 0;
+  statusEl.textContent = 'simulating chip...';
+  setTimeout(function(){
+    var phi = simulateChip(st.seed);
+    st.solver = new Solver(phi);
+    st.rmsB1 = st.solver.rms(BAND, ZERO, 0);
+    st.rmsB2 = st.solver.rms(OUT, ZERO, 0);
+    update();
+    statusEl.textContent = 'searching trim: generation 0/' + GENS + '...';
+    search(st.solver, BAND, (seed * 7 + 1) >>> 0, function(g, best){
+      st.gen = g; st.bestF = best.f;
+      if(g % 10 === 0 || g === GENS) statusEl.textContent = 'searching trim: generation ' + g + '/' + GENS + ' · best band RMS ' + best.f.toFixed(2) + '°';
+    }, function(best){
+      st.mask = best.m; st.p = best.p;
+      st.rmsA1 = st.solver.rms(BAND, st.mask, st.p);
+      st.rmsA2 = st.solver.rms(OUT, st.mask, st.p);
+      st.searched = true; st.running = false;
+      statusEl.textContent = 'chip seed ' + st.seed + ' · search finished ' + GENS + ' generations in this browser';
+      update();
+    });
+  }, 30);
+}
+
+// resize
+if('ResizeObserver' in window){ new ResizeObserver(function(){ if(st.solver) drawChart(st.k, 0, 0); }).observe(chart); }
+window.addEventListener('resize', function(){ if(st.solver) drawChart(st.k, 0, 0); });
+
+// init
+freq.value = String(FC);
+setDialAngle(st.theta);
+startRun(2024);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+ "title": "NL2SQL Playground",
+ "tagline": "Plain question to SQL, run in the browser",
+ "description": "Pick a question and step through a natural-language-to-SQL pipeline shaped like the real one: term extraction, graph-based table selection, context and prompt assembly, the generated query, company-scoped validation, and an execute-and-repair loop. The query then runs against a fictional apparel-production database in the browser with sql.js.",
+ "tech": [
+  "JavaScript",
+  "sql.js 1.10.3",
+  "SQLite",
+  "Fictional data"
+ ],
+ "kind": "ml",
+ "repo": null,
+ "controls": "Pick a sample · Next step / Run all · Tabs to revisit a step",
+ "context": "Production work",
+ "highlights": [
+  "Natural-language questions to SQL over a large apparel-ERP schema",
+  "Graph-based table selection to keep prompts small, then schema-grounded prompting",
+  "Tenant-scoped validation that injects company filters, plus an execute-and-repair loop"
+ ]
+}

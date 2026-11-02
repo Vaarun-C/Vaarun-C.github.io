@@ -1,0 +1,10 @@
+{
+  "title": "ASCII Camera",
+  "tagline": "Your webcam, redrawn as terminal characters.",
+  "description": "A port of a Python script that turns a webcam feed into coloured ASCII art, using the same 70-character density ramp and luminance mapping. Frames are processed inside this tab and nothing is uploaded anywhere. If the camera is refused or missing, a generated spinning torus is pushed through the same pipeline instead.",
+  "tech": ["JavaScript", "Canvas", "getUserMedia", "Python OpenCV (original)"],
+  "section": "creative",
+  "kind": "web",
+  "repo": "https://github.com/Vaarun-C/ASCII-Camera",
+  "controls": "Turn on camera · density and contrast sliders · COLOR and DARK toggles"
+}

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Puzzle Solvers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<style>
+  :root {
+    --bg: #0b0a0d; --panel: #16131b; --panel2: #1d1a24; --edge: #2b2634; --edge2: #5a5268;
+    --ink: #ece6d6; --dim: #8d869a; --amber: #ffc53d; --green: #5cf2b0; --red: #ff5c6c; --grey: #3b3646;
+    color-scheme: dark;
+  }
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; }
+  body { display: flex; flex-direction: column; font: 18px/1.2 "VT323", ui-monospace, Menlo, monospace; }
+  button, input { font-family: inherit; }
+  button {
+    font: 8px "Press Start 2P", ui-monospace, monospace; color: var(--ink);
+    background: var(--panel); border: 2px solid var(--edge); padding: 7px 8px;
+    box-shadow: 2px 2px 0 #000; cursor: pointer;
+  }
+  button[aria-selected="true"], button.on { color: #0b0a0d; background: var(--amber); border-color: var(--amber); }
+  button:disabled { opacity: .45; cursor: default; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  input[type=range] { accent-color: var(--amber); width: 100px; }
+  label { display: flex; align-items: center; gap: 6px; color: var(--dim); }
+  output, .num { color: var(--amber); }
+
+  .tabs { display: flex; gap: 6px; padding: 6px 8px; background: var(--panel2); border-bottom: 2px solid var(--edge); flex-wrap: wrap; }
+  .panels { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  .panel { height: 100%; padding: 10px; display: flex; flex-direction: column; }
+  .hint { color: var(--dim); font-size: 16px; margin: 6px 0 0; }
+  .status { color: var(--green); min-height: 1.2em; font-size: 18px; }
+  .status.err { color: var(--red); }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+  /* ---------- Sudoku ---------- */
+  .sud { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; justify-content: center; }
+  .sgrid {
+    display: grid; grid-template-columns: repeat(9, 1fr);
+    width: min(100%, calc(100vh - 130px), 420px); aspect-ratio: 1; container-type: inline-size;
+    border: 2px solid var(--amber); background: #000;
+  }
+  .sgrid input {
+    width: 100%; height: 100%; min-width: 0; padding: 0; margin: 0;
+    background: #0f0d13; color: var(--ink); border: 1px solid var(--edge); border-radius: 0;
+    text-align: center; font-size: 7.5cqw; font-family: "VT323", monospace; caret-color: var(--amber);
+  }
+  .sgrid input:focus { outline: none; background: #241f2e; box-shadow: inset 0 0 0 2px var(--amber); }
+  .sgrid input.rb { border-right: 2px solid var(--edge2); }
+  .sgrid input.bb { border-bottom: 2px solid var(--edge2); }
+  .sgrid input.given { color: var(--amber); }
+  .sgrid input.forced { background: #3a2f10; color: var(--amber); }
+  .sgrid input.placed { background: #103226; color: var(--green); }
+  .sgrid input.undo { background: #3a1419; color: var(--red); }
+  .sgrid input.cursor { box-shadow: inset 0 0 0 2px var(--green); }
+  .sgrid input:read-only { cursor: default; }
+  .side { flex: 1 1 180px; max-width: 280px; display: flex; flex-direction: column; gap: 8px; }
+  .side .group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .counters { color: var(--dim); font-size: 20px; }
+  .counters b { color: var(--amber); font-weight: normal; }
+  .legend { display: flex; gap: 6px; flex-wrap: wrap; font-size: 16px; }
+  .legend span { padding: 0 6px; border: 1px solid var(--edge2); }
+  .legend .lf { color: var(--amber); } .legend .lp { color: var(--green); } .legend .lu { color: var(--red); }
+
+  /* ---------- Wordle / Primel guesser ---------- */
+  .gwrap { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; justify-content: center; }
+  .gleft { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .gboard { display: flex; flex-direction: column; gap: 5px; }
+  .grow { display: flex; gap: 5px; }
+  .tile {
+    width: clamp(30px, 10vw, 46px); aspect-ratio: 1; display: grid; place-items: center;
+    background: #0f0d13; border: 2px solid var(--edge); color: var(--ink);
+    font: clamp(18px, 4.5vw, 26px)/1 "VT323", monospace; text-transform: uppercase; user-select: none;
+  }
+  .tile.t0 { background: var(--grey); border-color: #4a4456; }
+  .tile.t1 { background: var(--amber); border-color: var(--amber); color: #0b0a0d; }
+  .tile.t2 { background: var(--green); border-color: var(--green); color: #0b0a0d; }
+  .tile.typing { border-color: var(--dim); }
+  .tile.clickable { cursor: pointer; }
+  .gform { display: flex; gap: 6px; flex-wrap: wrap; }
+  .gform input {
+    width: 130px; background: #0f0d13; color: var(--ink); border: 2px solid var(--edge);
+    padding: 6px 8px; font: 22px "VT323", monospace; text-transform: uppercase; letter-spacing: 3px;
+  }
+  .gright { flex: 1 1 200px; max-width: 360px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .cnt { color: var(--amber); font-size: 22px; }
+  .cands {
+    flex: 1 1 auto; min-height: 120px; max-height: 260px; overflow: auto;
+    border: 2px solid var(--edge); background: #0f0d13; padding: 6px 8px;
+    color: var(--dim); font-size: 18px; line-height: 1.35; word-spacing: 6px;
+  }
+  .cands .cand-hi { color: var(--green); }
+</style>
+</head>
+<body>
+<nav class="tabs" role="tablist" aria-label="Puzzle tabs">
+  <button role="tab" id="tab-sudoku" aria-controls="p-sudoku" aria-selected="true" type="button">SUDOKU</button>
+  <button role="tab" id="tab-wordle" aria-controls="p-wordle" aria-selected="false" type="button">WORDLE</button>
+  <button role="tab" id="tab-primel" aria-controls="p-primel" aria-selected="false" type="button">PRIMEL</button>
+</nav>
+
+<div class="panels">
+  <!-- SUDOKU -->
+  <section class="panel" id="p-sudoku" role="tabpanel" aria-labelledby="tab-sudoku">
+    <div class="sud">
+      <div class="sgrid" id="sgrid" role="grid" aria-label="Sudoku grid"></div>
+      <div class="side">
+        <div class="group">
+          <button type="button" data-preset="0">EASY</button>
+          <button type="button" data-preset="1">HARD</button>
+          <button type="button" data-preset="2">DIABOLICAL</button>
+          <button type="button" id="sClear">CLEAR</button>
+        </div>
+        <div class="group">
+          <button type="button" id="sPlay">SOLVE</button>
+          <button type="button" id="sStep">STEP</button>
+          <button type="button" id="sReset">RESET</button>
+        </div>
+        <label>SPEED <input id="sSpeed" type="range" min="1" max="10" step="1" value="5"><output id="sSpeedOut">5</output></label>
+        <div class="counters" id="sCount">STEPS <b>0</b> · BACKTRACKS <b>0</b></div>
+        <div class="status" id="sStatus" aria-live="polite">Type digits into the grid, or pick a preset.</div>
+        <div class="legend"><span class="lf">forced</span><span class="lp">guess</span><span class="lu">undo</span></div>
+        <p class="hint">Arrow keys move between cells. Phase one is the original box-elimination pass; anything it cannot place is solved by animated backtracking.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- WORDLE -->
+  <section class="panel" id="p-wordle" role="tabpanel" aria-labelledby="tab-wordle" hidden>
+    <div class="gwrap">
+      <div class="gleft">
+        <div class="gboard" id="wBoard" aria-label="Wordle guesses"></div>
+        <form class="gform" id="wForm" autocomplete="off">
+          <input id="wIn" maxlength="5" placeholder="GUESS" aria-label="Type a five letter guess" spellcheck="false">
+          <button type="submit">SUBMIT</button>
+          <button type="button" id="wReset">RESET</button>
+        </form>
+        <div class="status" id="wStatus" aria-live="polite"></div>
+        <p class="hint">Tap a submitted tile to cycle grey, yellow, green. Candidates update as you go.</p>
+      </div>
+      <div class="gright">
+        <div class="cnt" id="wCount"></div>
+        <div class="cands" id="wCands"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRIMEL -->
+  <section class="panel" id="p-primel" role="tabpanel" aria-labelledby="tab-primel" hidden>
+    <div class="gwrap">
+      <div class="gleft">
+        <div class="gboard" id="pBoard" aria-label="Primel guesses"></div>
+        <form class="gform" id="pForm" autocomplete="off">
+          <input id="pIn" maxlength="5" inputmode="numeric" placeholder="PRIME" aria-label="Type a five digit prime" spellcheck="false">
+          <button type="submit">SUBMIT</button>
+          <button type="button" id="pReset">RESET</button>
+        </form>
+        <div class="status" id="pStatus" aria-live="polite"></div>
+        <p class="hint">Guesses must be 5-digit primes. Tap a tile to cycle grey, yellow, green.</p>
+      </div>
+      <div class="gright">
+        <div class="cnt" id="pCount"></div>
+        <div class="cands" id="pCands"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="words.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

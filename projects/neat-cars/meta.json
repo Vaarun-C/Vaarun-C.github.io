@@ -1,0 +1,17 @@
+{
+ "title": "NEAT Cars",
+ "tagline": "Neural nets evolve to drive a track",
+ "description": "A port of a from-scratch neuroevolution project: 100 cars steer with a small 5-6-3 neural net fed by five wall-sensing rays. Each generation the two fittest cars' weights are crossed over and mutated, and the panel shows generation, fitness, species count and the leading network with weights coloured by sign. The topology is fixed, so this is weight evolution rather than full NEAT, and you can paint your own track.",
+ "tech": [
+  "Python",
+  "NEAT",
+  "Neural networks",
+  "JavaScript",
+  "Canvas"
+ ],
+ "section": "ml",
+ "kind": "ml",
+ "repo": "https://github.com/Vaarun-C/NEAT-cars",
+ "controls": "1x / 5x / max speed · reset · paint to draw your own track",
+ "context": "Personal project"
+}

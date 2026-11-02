@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Falling Sand</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+  :root { --bg: #0b0a0d; --ink: #b8b2c4; --dim: #6c6578; --edge: #2a2631; color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; }
+  body { font-family: "Press Start 2P", ui-monospace, Menlo, monospace; font-size: 8px; }
+  #stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  canvas {
+    display: block; background: #000; border: 1px solid var(--edge);
+    image-rendering: pixelated; image-rendering: crisp-edges;
+    touch-action: none; cursor: crosshair;
+  }
+  #ui {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 8px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    pointer-events: none;
+  }
+  #hint { color: var(--dim); line-height: 1.6; text-shadow: 0 0 2px #000; }
+  button {
+    pointer-events: auto; font: inherit; color: var(--ink); background: #16131b;
+    border: 1px solid var(--edge); padding: 6px 8px; cursor: pointer;
+    box-shadow: 2px 2px 0 #000;
+  }
+  button:hover { color: #fff; border-color: #4a4356; }
+  button:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #000; }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c" width="150" height="100" aria-label="Falling sand simulation"></canvas></div>
+<div id="ui">
+  <span id="hint">drag to pour sand &middot; C to clear</span>
+  <button id="clear" type="button">CLEAR</button>
+</div>
+<script>
+(() => {
+  // Port of sand.py: 600x400 screen, pixel_width 4 -> 150x100 grid, 60 fps.
+  const SCREEN_W = 600, SCREEN_H = 400, PIXEL_W = 4;
+  const W = SCREEN_W / PIXEL_W, H = SCREEN_H / PIXEL_W;
+
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(W, H);
+  const out = new Uint32Array(img.data.buffer);
+
+  // grid[y*W+x] holds a packed ABGR colour; 0 == black == empty (hsva value 0).
+  let grid = new Uint32Array(W * H);
+
+  // pygame Color.hsva = (h, 100, 100, _) -> RGB. Hue in degrees.
+  function hsvToPacked(h) {
+    const s = 1, v = 1;
+    const c = v * s, hp = (h % 360) / 60, x = c * (1 - Math.abs((hp % 2) - 1));
+    let r = 0, g = 0, b = 0;
+    if (hp < 1) [r, g, b] = [c, x, 0];
+    else if (hp < 2) [r, g, b] = [x, c, 0];
+    else if (hp < 3) [r, g, b] = [0, c, x];
+    else if (hp < 4) [r, g, b] = [0, x, c];
+    else if (hp < 5) [r, g, b] = [x, 0, c];
+    else [r, g, b] = [c, 0, x];
+    const m = v - c;
+    const R = Math.round((r + m) * 255), G = Math.round((g + m) * 255), B = Math.round((b + m) * 255);
+    return (0xff << 24 | B << 16 | G << 8 | R) >>> 0;
+  }
+
+  // generate_gradient(): tic = (tic + 1) % 256, hue = tic (so hue sweeps 1..255, 0, 1, ...)
+  const gradient = (function* () {
+    const step = 1;
+    let tic = 0;
+    while (true) {
+      tic = (tic + step) % 256;
+      yield hsvToPacked(tic);
+    }
+  })();
+
+  // Same brush as the original: centre + 4 neighbours, with the original's bound checks
+  // (note `gx-1 > 0` / `gy-1 > 0`, so column/row 0 never receive the side cells).
+  function pour(gx, gy) {
+    if (gx < 0 || gy < 0 || gx >= W || gy >= H) return;
+    const colour = gradient.next().value;
+    grid[gy * W + gx] = colour;
+    if (gx - 1 > 0) grid[gy * W + gx - 1] = colour;
+    if (gx + 1 < W) grid[gy * W + gx + 1] = colour;
+    if (gy - 1 > 0) grid[(gy - 1) * W + gx] = colour;
+    if (gy + 1 < H) grid[(gy + 1) * W + gx] = colour;
+  }
+
+  // get_sand_pixels(): snapshot of every non-empty cell, row-major, before updating.
+  const sandList = new Int32Array(W * H);
+  function update() {
+    let n = 0;
+    for (let i = 0; i < W * H; i++) if (grid[i] !== 0) sandList[n++] = i;
+    // update_sand(): iterate the snapshot in order, swapping with the first empty of
+    // below, below-left, below-right. Edge columns and the bottom row are skipped.
+    for (let k = 0; k < n; k++) {
+      const i = sandList[k], x = i % W, y = (i / W) | 0;
+      if (x - 1 < 0 || x + 1 >= W || y + 1 >= H) continue;
+      const b = i + W;
+      let t = -1;
+      if (grid[b] === 0) t = b;
+      else if (grid[b - 1] === 0) t = b - 1;
+      else if (grid[b + 1] === 0) t = b + 1;
+      if (t >= 0) { const tmp = grid[t]; grid[t] = grid[i]; grid[i] = tmp; }
+    }
+  }
+
+  function draw() {
+    for (let i = 0; i < W * H; i++) out[i] = grid[i] || 0xff000000;
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // --- input (mouse + touch via pointer events) ---
+  let down = false, px = -1, py = -1, moved = false, touched = false, ticks = 0;
+  function toGrid(e) {
+    const r = canvas.getBoundingClientRect();
+    px = Math.floor((e.clientX - r.left) / r.width * SCREEN_W / PIXEL_W);
+    py = Math.floor((e.clientY - r.top) / r.height * SCREEN_H / PIXEL_W);
+  }
+  canvas.addEventListener('pointerdown', e => {
+    down = true; touched = true; canvas.setPointerCapture(e.pointerId); toGrid(e); pour(px, py); e.preventDefault();
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!down) return;
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    for (const ce of (evs.length ? evs : [e])) { toGrid(ce); pour(px, py); }
+    moved = true;
+  });
+  const up = () => { down = false; };
+  canvas.addEventListener('pointerup', up);
+  canvas.addEventListener('pointercancel', up);
+
+  function clear() { grid.fill(0); }
+  document.getElementById('clear').addEventListener('click', clear);
+  addEventListener('keydown', e => { if (e.key === 'c' || e.key === 'C') clear(); });
+
+  // --- fit canvas to viewport, keep 3:2 and pixelated ---
+  function fit() {
+    const pad = 8, uiH = 30;
+    const aw = innerWidth - pad * 2, ah = innerHeight - pad * 2 - uiH;
+    let s = Math.min(aw / W, ah / H);
+    if (s >= 2) s = Math.floor(s);
+    s = Math.max(s, 0.5);
+    canvas.style.width = Math.round(W * s) + 'px';
+    canvas.style.height = Math.round(H * s) + 'px';
+    document.getElementById('stage').style.bottom = uiH + 'px';
+  }
+  addEventListener('resize', fit);
+  fit();
+
+  // --- fixed 60 Hz loop (clock.tick(60)) ---
+  const STEP = 1000 / 60;
+  let last = performance.now(), acc = 0;
+  function frame(now) {
+    acc += Math.min(now - last, 250); last = now;
+    while (acc >= STEP) {
+      // Holding still keeps pouring (the original only poured on new pygame events).
+      if (down && !moved) pour(px, py);
+      moved = false;
+      // Idle pour: a wandering stream until the visitor first touches the canvas.
+      if (!touched && ticks < 60 * 14) {
+        ticks++;
+        if (ticks % 2 === 0) pour(Math.round(W / 2 + Math.sin(ticks / 70) * W * 0.32), 6);
+      }
+      update();
+      acc -= STEP;
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
