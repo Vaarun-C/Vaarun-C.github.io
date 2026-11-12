@@ -1,16 +1,20 @@
 {
- "title": "PageRank Lab",
- "tagline": "Watch PageRank converge, one link at a time",
- "description": "A port of the iterative PageRank from my AI and web information retrieval course project, with the same damping factor, dangling-node handling and epsilon convergence test as the Python. Edit the fictional site's link graph by hand, step through iterations while node size tracks rank, and compare the result with a random surfer walking the same links.",
- "tech": [
-  "JavaScript",
-  "d3.js",
-  "Python (port)",
-  "Information retrieval"
- ],
- "section": "ml",
- "kind": "ml",
- "repo": null,
- "controls": "Drag node→node add link · tap link remove · Space step · S surfer",
- "context": "Coursework"
+  "title": "PageRank Lab",
+  "tagline": "Watch PageRank converge, one link at a time",
+  "description": "A port of the iterative PageRank from my AI and web information retrieval course project, with the same damping factor, dangling-node handling and epsilon convergence test as the Python. Edit the fictional site's link graph by hand, step through iterations while node size tracks rank, and compare the result with a random surfer walking the same links.",
+  "tech": [
+    "JavaScript",
+    "d3.js",
+    "Python (port)",
+    "Information retrieval"
+  ],
+  "section": "ml",
+  "kind": "ml",
+  "repo": null,
+  "controls": "Drag node→node add link · tap link remove · Space step · S surfer",
+  "context": "Coursework",
+  "highlights": [
+    "Same damping factor, dangling-node handling and epsilon convergence test as the course Python",
+    "Compare iterative PageRank with a random surfer walking the same link graph"
+  ]
 }

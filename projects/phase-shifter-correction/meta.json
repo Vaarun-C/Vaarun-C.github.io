@@ -2,9 +2,20 @@
   "title": "Phase-Shifter Correction",
   "tagline": "Searching fine phase trims for a 6-bit shifter",
   "description": "A 6-bit phase shifter has 64 states spaced 5.625 degrees apart, but real states drift from their targets. Dial a desired phase to see which state the chip picks, then watch a genetic search find one small phase trim and the subset of states it applies to, scored across a 51-point band and checked on 50 held-out frequencies. The chip data is simulated, and the search is the repo's objective ported to JavaScript and run in your browser.",
-  "tech": ["Python", "NumPy", "Numba", "DEAP", "JavaScript", "Canvas"],
+  "tech": [
+    "Python",
+    "NumPy",
+    "Numba",
+    "DEAP",
+    "JavaScript",
+    "Canvas"
+  ],
   "section": "ml",
   "kind": "ml",
   "repo": "https://github.com/Vaarun-C/CorrectionAnglePredictor",
-  "controls": "Drag dial or arrow keys · Slider picks frequency · New chip re-simulates and re-searches"
+  "controls": "Drag dial or arrow keys · Slider picks frequency · New chip re-simulates and re-searches",
+  "highlights": [
+    "A genetic search (DEAP) finds one phase trim and the subset of the 64 states it applies to",
+    "Scored across a 51-point band and checked on 50 held-out frequencies"
+  ]
 }

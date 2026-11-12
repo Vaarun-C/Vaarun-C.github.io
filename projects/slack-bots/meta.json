@@ -1,7 +1,7 @@
 {
  "title": "Project Brain Chat",
  "tagline": "Ask a codebase its own questions",
- "description": "Project Brain indexes a codebase into a graph and vector store of endpoints, services, models and tables. A CLI and an MCP server query it, and chat bots answer questions from it with tool steps and citations to the source. This page is a scripted demo of the chat side, answering about a fictional sample project.",
+ "description": "Project Brain indexes a codebase into a graph and vector store of endpoints, services, models and tables. A CLI and an MCP server query it, and chat bots answer questions from it with tool steps and citations to the source. A personal project; this page is a scripted demo of the chat side, answering about a fictional sample project.",
  "tech": [
   "Python",
   "SQLite graph store",
@@ -14,10 +14,10 @@
  "kind": "ml",
  "repo": null,
  "controls": "Tap a prompt or type · tap [n] badges to open sources",
- "context": "Production work",
+ "context": "Personal project",
  "highlights": [
   "Builds a graph + vector index (\"brain\") of a codebase: endpoints, schemas, call paths",
   "Exposed to agents through a CLI and an MCP server with search, endpoint and enrich tools",
-  "Slack bots answer engineering questions with cited sources"
+  "Chat bots answer engineering questions with cited sources"
  ]
 }

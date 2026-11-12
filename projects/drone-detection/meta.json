@@ -1,19 +1,23 @@
 {
- "title": "Drone Detection Array",
- "tagline": "Localise a drone from four-mic time delays",
- "description": "A live simulation of a drone-detection pipeline: four microphones hear a moving drone and an impulsive noise source. GCC-PHAT time delays feed a steered-power direction scan, a threshold detector gives presence and confidence, and FastICA separates the two sources. The GCC-PHAT, delay-and-sum and FastICA steps are JavaScript ports of the Python, but the signals are synthetic and the detector is the energy rule, not the CNN.",
- "tech": [
-  "JavaScript",
-  "Canvas",
-  "GCC-PHAT",
-  "FastICA",
-  "Delay-and-sum",
-  "Python",
-  "PyTorch"
- ],
- "section": "ml",
- "kind": "ml",
- "repo": null,
- "controls": "Drag drone or noise on map · tap map to park drone · R resume orbit · space pause",
- "context": "Internship"
+  "title": "Drone Detection Array",
+  "tagline": "Localise a drone from four-mic time delays",
+  "description": "A live simulation of a drone-detection pipeline: four microphones hear a moving drone and an impulsive noise source. GCC-PHAT time delays feed a steered-power direction scan, a threshold detector gives presence and confidence, and FastICA separates the two sources. The GCC-PHAT, delay-and-sum and FastICA steps are JavaScript ports of the Python, but the signals are synthetic and the detector is the energy rule, not the CNN.",
+  "tech": [
+    "JavaScript",
+    "Canvas",
+    "GCC-PHAT",
+    "FastICA",
+    "Delay-and-sum",
+    "Python",
+    "PyTorch"
+  ],
+  "section": "ml",
+  "kind": "ml",
+  "repo": null,
+  "controls": "Drag drone or noise on map · tap map to park drone · R resume orbit · space pause",
+  "context": "Internship",
+  "highlights": [
+    "Four-microphone localisation: GCC-PHAT time delays feed a steered-power direction scan",
+    "FastICA separates the drone from an impulsive noise source, with presence and confidence from a threshold detector"
+  ]
 }

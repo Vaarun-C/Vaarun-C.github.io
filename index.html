@@ -4,101 +4,179 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Varun C — AI Engineer</title>
-<meta name="description" content="Varun C, AI engineer. Agents, retrieval and LLM systems, plus ML built from scratch. Every project runs live in its own window.">
+<meta name="description" content="Varun C, AI engineer. Agents, retrieval and LLM systems in production, plus ML built from scratch. 23 projects you can run in the browser.">
+<meta name="theme-color" content="#eadfc6">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Varun C — AI Engineer">
+<meta property="og:description" content="Agents, retrieval and LLM systems in production, plus ML built from scratch. 23 projects you can run in the browser.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="crt" aria-hidden="true"></div>
+<a class="skip" href="#ai">Skip to projects</a>
 
-<header class="hero">
-  <p class="boot" id="boot" aria-hidden="true"></p>
-  <h1>VARUN C<span class="blink">_</span></h1>
-  <p class="role">AI ENGINEER</p>
-  <p class="lede">I build LLM agents, retrieval systems and ML models, and ship them to production. Every project below runs live in its own window. Press <kbd>BOOT</kbd> on any of them to try it.</p>
-  <nav class="links hire">
-    <a class="cta" href="mailto:varun.c.blr@gmail.com">✉ email me</a>
-    <a class="cta" href="Resume.pdf" target="_blank" rel="noopener">▤ résumé</a>
-    <a href="https://www.linkedin.com/in/varun-c-75096a1b8/" target="_blank" rel="noopener">linkedin</a>
-    <a href="https://github.com/Vaarun-C" target="_blank" rel="noopener">github</a>
-    <a href="#ai">projects ↓</a>
-  </nav>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-sail" viewBox="0 0 16 16"><path d="M4 2.5v11L13 8z"/></symbol>
+  <symbol id="i-down" viewBox="0 0 16 16"><path d="M8 2v11M3.5 8.5 8 13l4.5-4.5"/></symbol>
+  <symbol id="i-up" viewBox="0 0 16 16"><path d="M8 14V3M3.5 7.5 8 3l4.5 4.5"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 16 16"><path d="M9 2h5v5M14 2 7 9M12 10v4H2V4h4"/></symbol>
+  <symbol id="i-anchor" viewBox="0 0 16 16"><path d="M8 5v9M5 7.5h6M2.5 9.5a5.5 5 0 0 0 11 0M8 1.5a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5z"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2v3h-3"/></symbol>
+  <symbol id="i-full" viewBox="0 0 16 16"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></symbol>
+  <symbol id="i-rule" viewBox="0 0 200 12"><path d="M0 6H86M114 6H200" stroke="currentColor" fill="none"/><rect x="95" y="1" width="10" height="10" transform="rotate(45 100 6)" fill="#7b2d26"/></symbol>
+</defs></svg>
 
-  <section class="focus" aria-label="What I work on">
-    <div class="fcard">
-      <h3>Agents &amp; LLM systems</h3>
-      <p>Tool-using agents, self-improving agents with LoRA fine-tuning, intent routing, MCP servers.</p>
+<div class="frame" aria-hidden="true"></div>
+
+<nav class="index" id="index" aria-label="Sections">
+  <a href="#ai"><b>I</b><span>AI Systems</span></a>
+  <a href="#ml"><b>II</b><span>ML &amp; Research</span></a>
+  <a href="#creative"><b>III</b><span>Creative</span></a>
+  <a href="#log"><b>IV</b><span>Logbook</span></a>
+  <a href="#edge"><b>V</b><span>Contact</span></a>
+  <a class="top" href="#plate"><svg aria-hidden="true"><use href="#i-up"/></svg><span>Plate I</span></a>
+</nav>
+
+<header class="opener" id="plate">
+  <figure class="plate">
+    <div class="plate-head"><span>Plate I.</span><span class="wide">Specimens of the Applied Seas, gathered 2023 – 2026</span><span>Figs. I – IV</span></div>
+
+    <div class="specimens">
+      <svg class="ring" viewBox="0 0 600 600" aria-hidden="true">
+        <circle cx="300" cy="300" r="196" stroke-width=".7" stroke-dasharray="2 6" opacity=".3"/>
+      </svg>
+
+      <div class="title">
+        <h1>Varun C</h1>
+        <p class="role">AI Engineer</p>
+        <svg class="rule" aria-hidden="true"><use href="#i-rule"/></svg>
+        <p class="status">Open to offers · 1+ year shipping production LLM systems · Bengaluru or remote</p>
+      </div>
+
+      <a class="fig f-whale" href="#ai">
+        <img src="assets/art/whale.webp" alt="" width="1536" height="1024">
+        <span class="cap"><i>Balaena</i><b><span class="no">I.</span> AI Systems</b><small>6 projects · 3 in production</small></span>
+      </a>
+      <a class="fig f-jelly" href="#ml">
+        <img src="assets/art/jelly.webp" alt="" width="1024" height="1536">
+        <span class="cap"><i>Medusa</i><b><span class="no">II.</span> ML &amp; Research</b><small>6 projects · 1 paper</small></span>
+      </a>
+      <a class="fig f-serp" href="#creative">
+        <img src="assets/art/serpent.webp" alt="" width="1536" height="1024">
+        <span class="cap"><i>Serpens · here be dragons</i><b><span class="no">III.</span> Creative</b><small>11 games &amp; toys</small></span>
+      </a>
+      <a class="fig f-dolph" href="#log">
+        <img src="assets/art/dolphins.webp" alt="" width="1536" height="1024">
+        <span class="cap"><i>Delphinus</i><b><span class="no">IV.</span> Logbook</b><small>Where I've worked</small></span>
+      </a>
     </div>
-    <div class="fcard">
-      <h3>Retrieval &amp; data</h3>
-      <p>Knowledge graphs, hybrid vector + BM25 search, NL2SQL with validation, visual search.</p>
+
+    <div class="plate-foot"><span>Figs. I – IV drawn from life. Choose a figure to turn to its page.</span><a href="#ai">Begin <svg aria-hidden="true"><use href="#i-down"/></svg></a></div>
+    <div class="acts plate-acts">
+      <a class="btn ox" href="mailto:varun.c.blr@gmail.com">Email me</a>
+      <a class="btn" href="Resume.pdf" target="_blank" rel="noopener">Résumé <span class="sr-only">(PDF, opens in a new tab)</span></a>
     </div>
-    <div class="fcard">
-      <h3>ML from scratch</h3>
-      <p>Neuroevolution, signal processing and source separation, surrogate models, Bayesian optimisation.</p>
-    </div>
-  </section>
-  <ul class="stack" aria-label="Tools">
-    <li>Python</li><li>PyTorch</li><li>scikit-learn</li><li>vLLM</li><li>LoRA</li><li>Modal</li><li>Neo4j</li><li>Vector DBs</li>
-    <li>FastAPI</li><li>AWS Lambda / SQS</li><li>Docker</li><li>JavaScript</li>
-  </ul>
+  </figure>
+
+  <div class="side">
+    <aside class="log" aria-labelledby="log-title">
+      <h2 id="log-title">Ship's Log</h2>
+      <svg class="rule small" aria-hidden="true"><use href="#i-rule"/></svg>
+      <p class="lede">I build every part myself, from the model to the page: LLM agents, retrieval systems and ML models, shipped to production.</p>
+      <p class="lede">All <span class="count">23</span> projects here run in your browser: press <em>Set sail</em> on any of them.</p>
+      <dl>
+        <div><dt>Now</dt><dd>AI engineer, building LLM agents, retrieval and NL2SQL systems in production</dd></div>
+        <div><dt>Before</dt><dd>AVEVA (cut an API from 40&nbsp;s to 2&nbsp;s), Snow Mountain AI, STARC-PESU, PES University</dd></div>
+        <div><dt>Paper</dt><dd>From Diagrams to Code, 2025</dd></div>
+      </dl>
+      <div class="acts">
+        <a class="btn ox" href="mailto:varun.c.blr@gmail.com">Email me</a>
+        <a class="btn" href="Resume.pdf" target="_blank" rel="noopener">Résumé <span class="sr-only">(PDF, opens in a new tab)</span></a>
+      </div>
+      <p class="links"><a href="https://www.linkedin.com/in/varun-c-75096a1b8/" target="_blank" rel="noopener">LinkedIn</a> · <a href="https://github.com/Vaarun-C" target="_blank" rel="noopener">GitHub</a></p>
+    </aside>
+  </div>
 </header>
 
-<nav class="secnav" aria-label="Sections" id="secnav"></nav>
 <main id="list"></main>
 
-<section class="xp" id="experience" aria-label="Experience">
-  <header class="sechead"><p class="secnum">04</p><h2>Experience &amp; Writing</h2><p class="blurb">Where I've worked and what I've published.</p></header>
-  <ol class="timeline">
-    <li><p class="when">Jul 2024 – present</p><h3>Teaching Assistant, Big Data <span>· PES University</span></h3><p>Designed and graded Spark assignments for 200+ students. Reviewed distributed-systems projects: Kafka task queues, multi-client file transfer and real-time log management.</p><ul class="tech"><li>Spark</li><li>Kafka</li><li>Hadoop</li></ul></li>
-    <li><p class="when">Jun – Jul 2024</p><h3>Software Engineering Intern <span>· AVEVA</span></h3><p>Built real-time drill-down charts, and an async API that cut data retrieval from 40 s to 2 s (95% faster).</p><ul class="tech"><li>.NET Core</li><li>SQL</li><li>Angular</li><li>RxJS</li></ul></li>
-    <li><p class="when">Jun – Aug 2023</p><h3>Full Stack Developer Intern <span>· Snow Mountain AI</span></h3><p>Led the database migration from a team-based to an organisation- and project-based schema, and rebuilt the company website frontend.</p><ul class="tech"><li>PostgreSQL</li><li>Supabase</li><li>Next.js</li></ul></li>
-    <li><p class="when">Jun – Jul 2023</p><h3>Computer Vision Intern <span>· STARC-PESU</span></h3><p>Computer vision for cricket ball tracking and wide-ball detection with 90% accuracy, visualised in Unity3D at 60 fps. <a href="#wide-ball-detection">See the live demo ↑</a></p><ul class="tech"><li>OpenCV</li><li>MediaPipe</li><li>TensorFlow</li><li>Unity3D</li></ul></li>
+<section class="region logbook" id="log" aria-labelledby="log-title-2">
+  <header class="region-head">
+    <figure class="creature">
+      <img src="assets/art/dolphins.webp" alt="" width="1536" height="1024">
+      <figcaption>Fig. IV. — <i>Delphinus</i>, who keep the ship company</figcaption>
+    </figure>
+    <div>
+      <h2 id="log-title-2"><b>IV.</b> Logbook</h2>
+      <p>Where I've worked, and what I've published.</p>
+    </div>
+  </header>
+  <ol class="ledger">
+    <li class="now"><p class="when">Now</p><div><h3>AI Engineer <span class="org">Current role</span></h3><p>1+ year building LLM agents, retrieval and NL2SQL systems that run in production. Three projects in AI Systems are replicas of this work on made-up data: NL2SQL, PlannerAI and Lookbook Search. <a href="#ai">See them <svg aria-hidden="true"><use href="#i-up"/></svg></a></p></div></li>
+    <li><p class="when">Jul – Aug 2024</p><div><h3>Teaching Assistant, Big Data <span class="org">PES University</span></h3><p>Designed and graded Spark assignments for 200+ students. Reviewed distributed-systems projects: Kafka task queues, multi-client file transfer and real-time log management.</p><p class="cargo">Spark · Kafka · Hadoop</p></div></li>
+    <li><p class="when">Jun – Jul 2024</p><div><h3>Software Engineering Intern <span class="org">AVEVA</span></h3><p>Built real-time drill-down charts, and an async API that cut data retrieval from 40 s to 2 s (95% faster).</p><p class="cargo">.NET Core · SQL · Angular · RxJS</p></div></li>
+    <li><p class="when">Jun – Aug 2023</p><div><h3>Full Stack Developer Intern <span class="org">Snow Mountain AI</span></h3><p>Led the database migration from a team-based to an organisation- and project-based schema, and rebuilt the company website frontend.</p><p class="cargo">PostgreSQL · Supabase · Next.js</p></div></li>
+    <li><p class="when">Jun – Jul 2023</p><div><h3>Computer Vision Intern <span class="org">STARC-PESU</span></h3><p>Computer vision for cricket ball tracking and wide-ball detection with 90% accuracy, visualised in Unity3D at 60 fps. <a href="#wide-ball-detection">See the live demo <svg aria-hidden="true"><use href="#i-up"/></svg></a></p><p class="cargo">OpenCV · MediaPipe · TensorFlow · Unity3D</p></div></li>
+    <li class="paper"><p class="when">2025</p><div><h3>From Diagrams to Code: An Exploration into Automated Cloud Template Creation</h3><p>Paper. International Conference on Electronics Information and Emergency Communication.</p></div></li>
   </ol>
-  <div class="paper">
-    <p class="when">PAPER · 2025</p>
-    <h3>From Diagrams to Code: An Exploration into Automated Cloud Template Creation</h3>
-    <p>International Conference on Electronics Information and Emergency Communication</p>
-  </div>
+  <p class="provisions"><span class="lbl">Provisions</span> Python · JavaScript · SQL · C#/.NET · PyTorch · TensorFlow · NumPy · OpenCV · MediaPipe · Claude API · vLLM · LoRA · MCP · Chroma · Neo4j · FastAPI · Spark · Kafka · PostgreSQL · SQLite · Next.js · Angular · d3.js · Canvas</p>
 </section>
 
-<footer>
-  <p class="footcta">Hiring for AI or ML? <a href="mailto:varun.c.blr@gmail.com">varun.c.blr@gmail.com</a> · <a href="https://www.linkedin.com/in/varun-c-75096a1b8/" target="_blank" rel="noopener">LinkedIn</a> · <a href="Resume.pdf" target="_blank" rel="noopener">Résumé</a></p>
-  <p>Varun C · <a href="https://github.com/Vaarun-C" target="_blank" rel="noopener">github.com/Vaarun-C</a> · <span id="count"></span></p>
-  <p class="fine">Work projects run on made-up demo data. No real customer data appears on this site.</p>
+<footer class="region edge" id="edge" aria-labelledby="edge-title">
+  <div class="edge-grid">
+    <figure class="eye">
+      <img src="assets/art/kraken.webp" alt="" width="1536" height="1024">
+      <figcaption>Fig. V. — <i>Kraken</i>, who waits past the edge of the chart</figcaption>
+    </figure>
+    <div class="end">
+      <h2 id="edge-title">Here the chart ends</h2>
+      <p class="lede">Past this line the old mapmakers drew monsters and stopped guessing. If you're hiring for AI or ML, write to me and we'll chart the next part together.</p>
+      <div class="acts">
+        <a class="btn ox" href="mailto:varun.c.blr@gmail.com">Email me</a>
+        <a class="btn" href="Resume.pdf" target="_blank" rel="noopener">Résumé <span class="sr-only">(PDF, opens in a new tab)</span></a>
+      </div>
+      <p class="links"><a href="https://www.linkedin.com/in/varun-c-75096a1b8/" target="_blank" rel="noopener">LinkedIn</a> · <a href="https://github.com/Vaarun-C" target="_blank" rel="noopener">GitHub</a> · <a href="#plate">Back to Plate I</a></p>
+      <p class="fine">varun.c.blr@gmail.com · <span id="count"></span> · Work projects run on made-up demo data. No real customer data appears on this site. Engravings made with an image model.</p>
+    </div>
+  </div>
 </footer>
 
+<p class="sr-only" id="announce" aria-live="polite"></p>
+
 <template id="tpl">
-  <article class="project">
-    <div class="win">
-      <div class="bar">
-        <span class="dots"><i></i><i></i><i></i></span>
-        <span class="wtitle"></span>
-        <span class="wbtns">
-          <button class="wb reload" title="Restart" aria-label="Restart">↻</button>
-          <button class="wb full" title="Fullscreen" aria-label="Fullscreen">⛶</button>
-          <a class="wb pop" title="Open in new tab" aria-label="Open in new tab" target="_blank" rel="noopener">↗</a>
+  <article class="specimen">
+    <figure class="shot">
+      <div class="vessel" data-state="off">
+        <div class="screen">
+          <button class="sail" type="button"><svg aria-hidden="true"><use href="#i-sail"/></svg><span>Set sail</span></button>
+          <p class="msg" hidden></p>
+        </div>
+      </div>
+      <div class="deck">
+        <span class="state">At anchor</span>
+        <span class="tools">
+          <button class="tb off" type="button" hidden><svg aria-hidden="true"><use href="#i-anchor"/></svg><span>Drop anchor</span></button>
+          <button class="tb reload" type="button"><svg aria-hidden="true"><use href="#i-redo"/></svg></button>
+          <button class="tb full" type="button"><svg aria-hidden="true"><use href="#i-full"/></svg></button>
+          <a class="tb pop" target="_blank" rel="noopener"><svg aria-hidden="true"><use href="#i-ext"/></svg></a>
         </span>
       </div>
-      <div class="screen">
-        <button class="power">
-          <span class="pw-icon">▶</span>
-          <span class="pw-label">BOOT</span>
-          <span class="pw-hint"></span>
-        </button>
-      </div>
-    </div>
-    <div class="info">
-      <p class="kind"></p>
-      <h2></h2>
+      <figcaption class="hint" hidden></figcaption>
+    </figure>
+    <div class="legend">
+      <h3><b class="no"></b> <span class="name"></span></h3>
       <p class="tag"></p>
-      <p class="desc"></p>
+      <p class="controls"><span class="lbl">Controls</span> <span class="ctext"></span></p>
+      <details class="extra">
+        <summary>More about this project</summary>
+        <p class="desc"></p>
+      </details>
       <ul class="hl"></ul>
-      <p class="controls"></p>
-      <ul class="tech"></ul>
-      <a class="repo" target="_blank" rel="noopener">view source →</a>
+      <p class="cargo"></p>
+      <p class="ctx"><span class="lbl">Found</span> <span class="ctext2"></span></p>
+      <a class="repo" target="_blank" rel="noopener">View source <svg aria-hidden="true"><use href="#i-ext"/></svg></a>
     </div>
   </article>
 </template>

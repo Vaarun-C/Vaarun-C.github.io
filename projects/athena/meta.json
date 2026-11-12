@@ -1,21 +1,22 @@
 {
  "title": "Athena",
- "tagline": "A memory graph that answers with receipts",
- "description": "Athena is a personal assistant built on a temporal knowledge graph that outlives every chat. Its Ask screen searches the graph, checks open commitments, reads the source notes, then writes an answer only from numbered records, each one cited. The demo runs the same stages over a small fictional graph.",
+ "tagline": "A reviewed memory graph that answers with receipts",
+ "description": "Athena is my long-term memory: two temporal knowledge graphs, one for work and one for life, that hold people, organisations, projects, events and open commitments. Claude Code extracts entities and facts from emails, Slack and meeting notes into a review batch, and nothing enters a graph until I approve it. Questions go through a small query agent that searches the graph and answers with cited records. The demo runs the ask side over a small fictional graph.",
  "tech": [
-  "d3.js",
-  "Graphiti",
-  "Neo4j",
   "Python",
-  "Modal"
+  "Graphiti",
+  "Kuzu",
+  "fastembed",
+  "Claude Code",
+  "d3.js"
  ],
  "kind": "ml",
  "repo": "https://github.com/Vaarun-C/Athena",
  "controls": "Tap a question or type one · Drag nodes · Tap a [n] citation to trace it",
  "context": "Personal project",
  "highlights": [
-  "Personal knowledge graph in Neo4j: people, orgs, projects, commitments and source notes",
-  "Multi-stage ask pipeline: query rewrite, hybrid retrieval (embeddings + BM25), graph traversal, cited answer",
-  "Eval suite for retrieval and answer quality; deployed on Modal"
+  "Two separate Graphiti graphs on embedded Kuzu (work and life), with typed nodes and time-stamped facts",
+  "Human-in-the-loop ingest: Claude Code drafts each batch, I review it, then it is written to the graph",
+  "No API keys: local bge-small embeddings, hybrid search, and a Haiku subagent for queries; Wispr Flow meetings sync in"
  ]
 }

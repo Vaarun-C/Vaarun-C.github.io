@@ -6,8 +6,8 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 const SECTIONS = [
   {
     id: "ai", title: "AI Systems",
-    blurb: "Agents, retrieval and LLM products, several of them in production. Demos use made-up data.",
-    slugs: ["modal-agents", "athena", "nl2sql", "slack-bots", "planner-ai", "visual-search"],
+    blurb: "Agents, retrieval and LLM products. The first three run in production; their demos are replicas on made-up data.",
+    slugs: ["nl2sql", "planner-ai", "visual-search", "slack-bots", "athena", "modal-agents"],
   },
   {
     id: "ml", title: "ML & Research",
@@ -19,7 +19,7 @@ const SECTIONS = [
     blurb: "Games, simulations and toys I build for fun. All of them are playable.",
     slugs: [
       "pacman", "pixelgame", "dungeon-crawler", "ki-bot", "chess", "wave-function-collapse", "falling-sand",
-      "collatz", "satisfying-visualizations", "ascii-camera", "puzzle-solvers", "tom-riddle-diary",
+      "collatz", "satisfying-visualizations", "ascii-camera", "puzzle-solvers",
     ],
   },
 ];
@@ -31,7 +31,9 @@ for (const s of SECTIONS) {
     const file = `projects/${slug}/meta.json`;
     if (!existsSync(file)) { console.warn("missing", file); continue; }
     const meta = JSON.parse(readFileSync(file, "utf8"));
-    projects.push({ slug, url: meta.url || `projects/${slug}/index.html`, ...meta, section: s.id });
+    // A real capture of the running demo, shown unlit until the visitor switches the lights on.
+    const preview = existsSync(`projects/${slug}/preview.jpg`) ? `projects/${slug}/preview.jpg` : null;
+    projects.push({ slug, url: meta.url || `projects/${slug}/index.html`, preview, ...meta, section: s.id });
   }
   out.push({ id: s.id, title: s.title, blurb: s.blurb, projects });
 }

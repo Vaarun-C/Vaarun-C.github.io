@@ -1,18 +1,22 @@
 {
- "title": "Wide-Ball Guideline",
- "tagline": "A wide line that follows the batter's stance",
- "description": "In the repo, a pose model tracks the batter's foot in a main-camera video, and that position slides a virtual wide guideline along the popping crease, snapping to the return crease at the limit. This page drags the batter's foot and the ball's line through the same geometry and judges each delivery as wide or not. The pose model is replaced by pre-computed stances, so the video inference itself is not run here.",
- "tech": [
-  "Python",
-  "OpenCV",
-  "MediaPipe Pose",
-  "VPython",
-  "JavaScript",
-  "Canvas"
- ],
- "section": "ml",
- "kind": "ml",
- "repo": "https://github.com/VishalMGodi/STARC-Wide-ball-detection/tree/CombinedPoseDetection",
- "controls": "Drag foot or ball on the pitch · Stance presets · Ball line slider",
- "context": "Internship · team project"
+  "title": "Wide-Ball Guideline",
+  "tagline": "A wide line that follows the batter's stance",
+  "description": "In the repo, a pose model tracks the batter's foot in a main-camera video, and that position slides a virtual wide guideline along the popping crease, snapping to the return crease at the limit. This page drags the batter's foot and the ball's line through the same geometry and judges each delivery as wide or not. The pose model is replaced by pre-computed stances, so the video inference itself is not run here.",
+  "tech": [
+    "Python",
+    "OpenCV",
+    "MediaPipe Pose",
+    "VPython",
+    "JavaScript",
+    "Canvas"
+  ],
+  "section": "ml",
+  "kind": "ml",
+  "repo": "https://github.com/VishalMGodi/STARC-Wide-ball-detection/tree/CombinedPoseDetection",
+  "controls": "Drag foot or ball on the pitch · Stance presets · Ball line slider",
+  "context": "Internship · team project",
+  "highlights": [
+    "Pose tracking of the batter's foot slides a virtual wide guideline along the popping crease",
+    "The internship system reached 90% accuracy, visualised in Unity3D at 60 fps"
+  ]
 }
